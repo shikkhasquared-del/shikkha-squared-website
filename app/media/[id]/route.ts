@@ -1,0 +1,3 @@
+import { readCMS } from '../../../lib/cms-read';
+export const dynamic='force-dynamic';
+export async function GET(request:Request){try{const id=new URL(request.url).pathname.split('/').at(-1)!;if(!/^[a-f0-9-]{36}$/.test(id))return new Response('File not found.',{status:404});const result=await readCMS('/api/published/media/'+id);if(!result.ok)return new Response('File not found.',{status:404});const headers=new Headers({'cache-control':'no-store','x-content-type-options':'nosniff'});for(const key of ['content-type','content-disposition','content-security-policy']){const value=result.headers.get(key);if(value)headers.set(key,value);}return new Response(result.body,{headers});}catch{return new Response('File unavailable.',{status:503});}}

@@ -1,0 +1,17 @@
+# Copy to .dev.vars for local use. Configure actual credentials separately.
+CMS_ORIGIN="https://shikkha-squared-admin.fairnote16.chatgpt.site"
+CMS_READ_TOKEN="REPLACE_WITH_ADMIN_SITE_SERVICE_TOKEN"
+
+# Student accounts
+# OTP_PEPPER: a long random secret used to hash sign-in codes (required for phone sign-in).
+OTP_PEPPER="REPLACE_WITH_LONG_RANDOM_SECRET"
+# "console" prints codes in the terminal (local development only). Leave unset in production until an SMS provider is added.
+SMS_PROVIDER="console"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+# Public HTTPS origin used for the Google redirect URL in production, e.g. https://www.shikkhasquared.com
+PUBLIC_ORIGIN=""
+# Course payments (SSLCommerz). Sandbox test store shown; use your own store in production.
+SSLCOMMERZ_STORE_ID="testbox"
+SSLCOMMERZ_STORE_PASSWORD="qwerty"
+# SSLCOMMERZ_LIVE="true" switches to the live gateway (real money).

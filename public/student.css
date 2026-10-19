@@ -1,0 +1,35 @@
+/* Student sign-in and account pages. Builds on catalog-pages.css tokens. */
+.student-auth{display:flex;justify-content:center;padding-block:70px 90px}
+.auth-card{width:min(440px,100%);padding:38px 36px;border:1px solid var(--page-line);border-radius:22px;background:var(--page-surface);box-shadow:0 30px 80px #0006}
+.auth-card.wide{width:min(560px,100%)}
+.auth-card h1{font-size:clamp(28px,4vw,38px);line-height:1.1;letter-spacing:-.03em;margin:12px 0 12px}
+.auth-card h2{font-size:15px;margin:32px 0 12px;padding-top:24px;border-top:1px solid var(--page-line)}
+.auth-lead{color:var(--page-muted);font-size:14px;line-height:1.7;margin-bottom:24px}
+.auth-lead strong{color:#f2f1f4;white-space:nowrap}
+.auth-form{display:flex;flex-direction:column;gap:10px}
+.auth-form label{font-size:12px;font-weight:550;color:#d7d6dc}
+.auth-form input{font:inherit;font-size:16px;color:#f2f1f4;background:#ffffff06;border:1px solid #ffffff22;border-radius:12px;padding:13px 15px;outline:none;transition:border-color .2s}
+.auth-form input:focus{border-color:var(--page-orange);box-shadow:0 0 0 3px #ff791a26}
+.auth-form .page-button{justify-content:center;margin-top:6px;cursor:pointer;border:0;font:inherit}
+.auth-code{letter-spacing:.5em;font-variant-numeric:tabular-nums;text-align:center;font-size:22px!important}
+.auth-or{display:flex;align-items:center;gap:14px;margin:22px 0;color:#77768a;font-size:12px}
+.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--page-line)}
+.auth-google{display:flex;justify-content:center;align-items:center;gap:10px;width:100%}
+.auth-google-mark{width:18px;height:18px}
+.auth-message{font-size:13px;line-height:1.6;padding:11px 14px;border-radius:10px;margin-bottom:18px;background:#3ddc8414;border:1px solid #3ddc8440;color:#a8efc6}
+.auth-message.error{background:#ff4d4d12;border-color:#ff6b6b45;color:#ffb3b3}
+.auth-muted{color:var(--page-muted);font-size:13px;line-height:1.6}
+.auth-links{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-top:20px;font-size:13px}
+.auth-links a,.auth-link-button{color:#ffa366;background:none;border:0;padding:0;font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.auth-method{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--page-line)}
+.auth-method>span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8b8999}
+.auth-method strong{font-size:15px;font-weight:550}
+.auth-signout{margin-top:30px}
+@media(max-width:560px){.student-auth{padding-block:36px 60px}.auth-card{padding:28px 22px;border-radius:18px}}
+.checkout-total{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:16px 0;margin-bottom:18px;border-block:1px solid var(--page-line);font-size:14px;color:var(--page-muted)}
+.checkout-total strong{font-size:22px;color:#f2f1f4;white-space:nowrap}
+.checkout-note{margin-top:16px;font-size:12px}
+.auth-card>.page-button{display:flex;justify-content:center;margin-top:20px}
+.auth-courses{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.auth-courses a{display:block;padding:12px 14px;border:1px solid var(--page-line);border-radius:12px;color:#f2f1f4;text-decoration:none}
+.auth-courses a:hover{border-color:var(--page-orange)}

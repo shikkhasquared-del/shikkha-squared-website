@@ -1,0 +1,17 @@
+{
+  "name": "shikkha-website",
+  "d1_databases": [
+    { "binding": "DB", "database_name": "shikkha-squared", "database_id": "050c5f0f-36d4-4a28-9fa8-1746984e7149" }
+  ],
+  "services": [
+    { "binding": "CMS", "service": "shikkha-admin" }
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "PUBLIC_ORIGIN": "https://shikkha-website.lazimjzx.workers.dev",
+    "GOOGLE_CLIENT_ID": "",
+    "SSLCOMMERZ_STORE_ID": "testbox",
+    "SSLCOMMERZ_LIVE": "false"
+  }
+}
