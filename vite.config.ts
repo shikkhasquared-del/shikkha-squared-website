@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -74,6 +75,11 @@ export default defineConfig(async ({ command }) => {
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
+        // Local dev: the admin and the website share one database, as they do on Cloudflare.
+        persistState: {
+          path: process.env.SHIKKHA_DEV_STATE ??
+            fileURLToPath(new URL("../.shikkha-dev-state", import.meta.url)),
+        },
         config: {
           ...localBindingConfig,
           ...(command === "build" && deployConfig ? deployConfig : {}),
