@@ -1,0 +1,26 @@
+/* Classroom: lesson player and lesson list. Builds on catalog-pages.css and student.css. */
+.classroom{padding-block:28px 80px}
+.classroom .page-breadcrumb{min-height:auto;margin-bottom:22px;font-size:12px;gap:6px}
+.classroom .page-breadcrumb a{color:#ffa366}
+.classroom-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;align-items:start}
+.classroom-main h1{font-size:clamp(24px,3vw,34px);letter-spacing:-.03em;margin:8px 0 12px}
+.classroom-main .page-eyebrow{margin-top:22px}
+.lesson-player{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--page-line)}
+.lesson-player video{width:100%;height:100%;display:block;background:#000}
+.lesson-player-error{position:absolute;inset:auto 16px 16px;margin:0;padding:12px 14px;border-radius:10px;background:#1b0f0fe6;border:1px solid #ff6b6b45;color:#ffb3b3;font-size:13px}
+.lesson-locked{aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:24px;border-radius:16px;border:1px solid var(--page-line);background:radial-gradient(circle at 50% 30%,#ff791a1a,transparent 60%),var(--page-surface)}
+.lesson-locked strong{font-size:20px}
+.lesson-locked p{color:var(--page-muted);font-size:14px;margin:0 0 6px}
+.lesson-notes{color:#c9c8cf;font-size:15px;line-height:1.8;white-space:pre-line}
+.lesson-nav{display:flex;justify-content:space-between;gap:12px;margin-top:26px}
+.classroom-lessons{border:1px solid var(--page-line);border-radius:16px;background:var(--page-surface);overflow:hidden;position:sticky;top:20px}
+.classroom-lessons h2{font-size:14px;padding:18px 18px 12px;margin:0;border-bottom:1px solid var(--page-line)}
+.classroom-lessons ol{list-style:none;margin:0;padding:6px;max-height:70vh;overflow:auto}
+.classroom-lessons a{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:10px;color:#e8e7eb;text-decoration:none}
+.classroom-lessons a:hover{background:#ffffff08}
+.classroom-lessons a[aria-current]{background:#ff791a1f;outline:1px solid #ff791a55}
+.classroom-lessons a.locked{color:#8d8c99}
+.lesson-number{font-size:11px;color:#ffa366;font-variant-numeric:tabular-nums;padding-top:2px}
+.lesson-name{display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.4}
+.lesson-name small{font-size:11px;color:var(--page-muted)}
+@media(max-width:900px){.classroom-grid{grid-template-columns:1fr}.classroom-lessons{position:static}}
