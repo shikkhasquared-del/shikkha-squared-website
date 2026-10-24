@@ -10,7 +10,7 @@
   "preview_urls": false,
   "vars": {
     "PUBLIC_ORIGIN": "https://shikkha-website.lazimjzx.workers.dev",
-    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_ID": "301574131617-p5092f7dds5n7ign0n939c707ehsqrmv.apps.googleusercontent.com",
     "SSLCOMMERZ_STORE_ID": "testbox",
     "SSLCOMMERZ_LIVE": "false"
   }
