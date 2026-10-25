@@ -33,3 +33,5 @@
 .auth-courses{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 .auth-courses a{display:block;padding:12px 14px;border:1px solid var(--page-line);border-radius:12px;color:#f2f1f4;text-decoration:none}
 .auth-courses a:hover{border-color:var(--page-orange)}
+.auth-legal{margin-top:20px;font-size:12px}
+.auth-legal a,.checkout-note a{color:#ffa366}
