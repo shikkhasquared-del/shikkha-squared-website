@@ -38,3 +38,4 @@
 .lesson-player.filled .lesson-watermark{top:calc(12px + env(safe-area-inset-top));right:calc(14px + env(safe-area-inset-right))}
 .lesson-player.filled .lesson-fullscreen{top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left))}
 html.lesson-filled,html.lesson-filled body{overflow:hidden}
+.lesson-watermark a{color:inherit;text-decoration:none;pointer-events:none}
