@@ -11,6 +11,7 @@
   // Watermark: sits in the top-right corner. If it is removed or hidden, the video pauses and it comes back.
   const text=frame&&frame.dataset.mark;
   if(text){
+    video.disablePictureInPicture=true; // the floating mini-player would also drop the watermark
     let mark;
     const attach=()=>{mark=document.createElement('div');mark.className='lesson-watermark';mark.setAttribute('aria-hidden','true');mark.textContent=text;frame.appendChild(mark);};
     const intact=()=>{
@@ -20,13 +21,23 @@
     };
     attach();
     setInterval(()=>{if(!intact()){video.pause();mark.remove();attach();}},1000);
-    // The browser's own full-screen mode would show the video alone, so go full screen with the watermark instead.
-    const fullscreen=()=>{
-      if(document.fullscreenElement===video&&frame.requestFullscreen)document.exitFullscreen().then(()=>frame.requestFullscreen()).catch(()=>{});
-      if(document.webkitFullscreenElement===video&&frame.webkitRequestFullscreen){document.webkitExitFullscreen();frame.webkitRequestFullscreen();}
-    };
-    document.addEventListener('fullscreenchange',fullscreen);
-    document.addEventListener('webkitfullscreenchange',fullscreen);
+    // The browser's own full-screen button would show the video without the watermark, so the player has its own
+    // that takes the whole frame full screen. It must be called straight from the click, or browsers refuse it.
+    const enter=frame.requestFullscreen||frame.webkitRequestFullscreen;
+    if(enter){
+      video.setAttribute('controlslist','nodownload nofullscreen');
+      const current=()=>document.fullscreenElement||document.webkitFullscreenElement;
+      const button=document.createElement('button');
+      button.type='button';button.className='lesson-fullscreen';
+      const label=()=>{const on=current()===frame;button.setAttribute('aria-label',on?'Exit full screen':'Full screen');button.title=on?'Exit full screen (F)':'Full screen (F)';button.classList.toggle('on',on);};
+      const toggle=()=>{if(current())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else enter.call(frame);};
+      button.addEventListener('click',toggle);
+      video.addEventListener('dblclick',e=>{e.preventDefault();toggle();});
+      frame.addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F'){e.preventDefault();toggle();}});
+      document.addEventListener('fullscreenchange',label);
+      document.addEventListener('webkitfullscreenchange',label);
+      label();frame.appendChild(button);
+    }
   }
 
   if(window.Hls&&window.Hls.isSupported()){
