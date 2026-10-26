@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import ts from 'typescript';
-import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 const output=path.resolve('.test-output/lessons'),outputUrl=pathToFileURL(output).href;
@@ -18,35 +17,33 @@ test('Only HTTPS HLS playlists on allowed CDN hosts are streamed',()=>{
   assert.ok(L.videoSource('https://videos.example.org/a/p.m3u8',['videos.example.org']));
 });
 
-test('Signatures follow Tenbyte\'s documented algorithm',()=>{
-  const expected=crypto.createHash('md5').update('1792850000/a/b.ts s3cret').digest('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  assert.equal(L.tenbyteUrl('https://x.tenbytecdn.com','/a/b.ts','s3cret',1792850000),`https://x.tenbytecdn.com/a/b.ts?md5=${expected}&expires=1792850000`);
-  assert.doesNotMatch(expected,/[+/=]/);
-  assert.equal(L.tenbyteUrl('https://x.tenbytecdn.com','/a/b.ts',undefined,1),'https://x.tenbytecdn.com/a/b.ts','unsigned until a secret is configured');
-});
-
-test('Students can only request playlists inside the lesson\'s own video folder',()=>{
+test("Students can only request files inside the lesson's own video folder",()=>{
   const s=L.videoSource(master);
-  assert.equal(L.playlistPath(s,'playlist.m3u8'),s.rootPath+'playlist.m3u8');
-  assert.equal(L.playlistPath(s,'360p/video.m3u8'),s.rootPath+'360p/video.m3u8');
-  for(const bad of ['../other/playlist.m3u8','360p/../../x.m3u8','360p/video0.ts','/abs.m3u8','a//b.m3u8','%2e%2e/x.m3u8','360p/video.m3u8?x=1'])assert.equal(L.playlistPath(s,bad),null,bad);
+  assert.equal(L.mediaPath(s,''),s.masterPath);
+  assert.equal(L.mediaPath(s,'playlist.m3u8'),s.rootPath+'playlist.m3u8');
+  assert.equal(L.mediaPath(s,'360p/video.m3u8'),s.rootPath+'360p/video.m3u8');
+  assert.equal(L.mediaPath(s,'360p/video0.ts'),s.rootPath+'360p/video0.ts');
+  for(const bad of ['../other/playlist.m3u8','360p/../../x.m3u8','/abs.m3u8','a//b.m3u8','%2e%2e/x.m3u8','360p/video.m3u8?x=1','360p/video0.ts/','index.html','360p/video0'])assert.equal(L.mediaPath(s,bad),null,bad);
+  assert.equal(L.isPlaylist(s.rootPath+'360p/video.m3u8'),true);
+  assert.equal(L.isPlaylist(s.rootPath+'360p/video0.ts'),false);
 });
 
-test('Playlists are rewritten: nested playlists through the site, video pieces signed on the CDN',()=>{
+test('Playlists are rewritten so every playlist and video piece comes through the site',()=>{
   const s=L.videoSource(master);
   const masterText='#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=644464,RESOLUTION=640x360\n360p/video.m3u8\n#EXT-X-MEDIA:TYPE=AUDIO,URI="audio/en.m3u8"\n';
-  const out=L.rewritePlaylist(masterText,s.masterPath,s,'/learn/physics/stream/0/','sec',1792850000);
+  const out=L.rewritePlaylist(masterText,s.masterPath,s,'/learn/physics/stream/0/');
   assert.match(out,/^\/learn\/physics\/stream\/0\/360p\/video\.m3u8$/m);
   assert.match(out,/URI="\/learn\/physics\/stream\/0\/audio\/en\.m3u8"/);
-  assert.equal(out.includes('tenbytecdn.com'),false,'the real playlist address never reaches the browser');
   const variant='#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXTINF:4.0,\nvideo0.ts\n#EXTINF:4.0,\nvideo1.ts\n#EXT-X-ENDLIST\n';
-  const v=L.rewritePlaylist(variant,s.rootPath+'360p/video.m3u8',s,'/learn/physics/stream/0/','sec',1792850000);
+  const v=L.rewritePlaylist(variant,s.rootPath+'360p/video.m3u8',s,'/learn/physics/stream/0/');
   const lines=v.split('\n');
-  assert.equal(lines[4],L.tenbyteUrl(s.origin,s.rootPath+'360p/video0.ts','sec',1792850000));
-  assert.match(lines[2],new RegExp('URI="https://g28gh6aqk9\\.tenbytecdn\\.com'+s.rootPath+'360p/key\\.bin\\?md5='));
+  assert.equal(lines[4],'/learn/physics/stream/0/360p/video0.ts');
+  assert.equal(lines[2],'#EXT-X-KEY:METHOD=AES-128,URI="/learn/physics/stream/0/360p/key.bin"');
   assert.equal(lines.filter(l=>l.startsWith('#')).length,6,'tags are kept');
-  const outside=L.rewritePlaylist('#EXTM3U\nhttps://other.test/x.ts\n',s.masterPath,s,'/p/','sec',1);
+  assert.equal((out+v).includes('tenbytecdn.com'),false,"Tenbyte's address never reaches the browser");
+  const outside=L.rewritePlaylist('#EXTM3U\nhttps://other.test/x.ts\n/elsewhere/y.ts\n',s.masterPath,s,'/p/');
   assert.match(outside,/^https:\/\/other\.test\/x\.ts$/m);
+  assert.match(outside,/^\/elsewhere\/y\.ts$/m,'files outside the lesson folder are not proxied');
 });
 
 test('Free previews open for everyone; other lessons only for enrolled students',()=>{

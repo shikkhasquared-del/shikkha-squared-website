@@ -22,5 +22,6 @@ export async function loadClassroom(request:Request,slug:string):Promise<Classro
   return {slug,course,published,lessons:courseLessons(course),student,enrolled,access};
 }
 
-export const tenbyteSecret=()=>env.TENBYTE_CDN_SECRET||undefined;
+// The private referrer Tenbyte's access rule allows (a bare host name: Tenbyte compares the header as written).
+export const tenbyteReferrer=()=>env.TENBYTE_REFERRER||undefined;
 export const tenbyteHosts=()=>(env.TENBYTE_HOSTS||'.tenbytecdn.com').split(',').map(h=>h.trim().toLowerCase()).filter(Boolean);

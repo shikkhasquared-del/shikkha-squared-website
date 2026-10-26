@@ -79,7 +79,7 @@ Plain settings live in `deploy/cloudflare.json`. Secrets are set with `wrangler 
 | `SMS_PROVIDER` | setting | No production SMS provider exists yet, so phone sign-in is unavailable on the live site |
 | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_LIVE` | settings | Payment gateway store, and sandbox or live mode |
 | `SSLCOMMERZ_STORE_PASSWORD` | secret | Payment gateway |
-| `TENBYTE_CDN_SECRET` | secret | Signs lesson video links |
+| `TENBYTE_REFERRER` | secret | Private referrer host that Tenbyte's access rule allows; the site sends it when fetching lesson videos |
 | `TENBYTE_HOSTS` | setting | Optional: video hosts other than `*.tenbytecdn.com` |
 
 ## More documentation
