@@ -19,7 +19,7 @@ export async function GET(request:Request){
     if(!source||!path)return deny(404,'Not found.');
     const secret=tenbyteSecret(),now=Math.floor(Date.now()/1000);
     const upstream=await fetch(tenbyteUrl(source.origin,path,secret,now+60),{signal:AbortSignal.timeout(10000)});
-    if(!upstream.ok)return deny(502,'The video is temporarily unavailable.');
+    if(!upstream.ok){console.error('Video origin refused playlist',upstream.status,source.origin,path,JSON.stringify(Object.fromEntries([...upstream.headers].filter(([k])=>/^(server|cdn-|cf-cache|age|cache-control)/i.test(k)))));return deny(502,'The video is temporarily unavailable.');}
     const body=rewritePlaylist(await upstream.text(),path,source,`/learn/${slug}/stream/${number}/`,secret,now+SEGMENT_TTL_S);
     return new Response(body,{headers:{'content-type':'application/vnd.apple.mpegurl','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
   }catch{return deny(503,'The video is temporarily unavailable.');}
