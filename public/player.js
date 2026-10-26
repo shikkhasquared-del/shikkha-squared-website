@@ -23,20 +23,46 @@
     setInterval(()=>{if(!intact()){video.pause();mark.remove();attach();}},1000);
     // The browser's own full-screen button would show the video without the watermark, so the player has its own
     // that takes the whole frame full screen. It must be called straight from the click, or browsers refuse it.
+    // iPhones can't put a page element full screen, so there the button fills the screen with the player instead.
     const enter=frame.requestFullscreen||frame.webkitRequestFullscreen;
-    if(enter){
-      video.setAttribute('controlslist','nodownload nofullscreen');
-      const current=()=>document.fullscreenElement||document.webkitFullscreenElement;
-      const button=document.createElement('button');
-      button.type='button';button.className='lesson-fullscreen';
-      const label=()=>{const on=current()===frame;button.setAttribute('aria-label',on?'Exit full screen':'Full screen');button.title=on?'Exit full screen (F)':'Full screen (F)';button.classList.toggle('on',on);};
-      const toggle=()=>{if(current())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else enter.call(frame);};
-      button.addEventListener('click',toggle);
-      video.addEventListener('dblclick',e=>{e.preventDefault();toggle();});
-      frame.addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F'){e.preventDefault();toggle();}});
-      document.addEventListener('fullscreenchange',label);
-      document.addEventListener('webkitfullscreenchange',label);
-      label();frame.appendChild(button);
+    const fullscreenElement=()=>document.fullscreenElement||document.webkitFullscreenElement;
+    const filled=()=>enter?fullscreenElement()===frame:frame.classList.contains('filled');
+    const button=document.createElement('button');
+    button.type='button';button.className='lesson-fullscreen';
+    const label=()=>{const on=filled();button.setAttribute('aria-label',on?'Exit full screen':'Full screen');button.title=on?'Exit full screen (F)':'Full screen (F)';button.classList.toggle('on',on);};
+    const fill=on=>{frame.classList.toggle('filled',on);document.documentElement.classList.toggle('lesson-filled',on);label();};
+    const toggle=()=>{
+      if(!enter)fill(!filled());
+      else if(fullscreenElement())(document.exitFullscreen||document.webkitExitFullscreen).call(document);
+      else enter.call(frame);
+    };
+    if(enter)video.setAttribute('controlslist','nodownload nofullscreen');
+    button.addEventListener('click',toggle);
+    video.addEventListener('dblclick',e=>{e.preventDefault();toggle();});
+    frame.addEventListener('keydown',e=>{if(e.key==='f'||e.key==='F'){e.preventDefault();toggle();}else if(e.key==='Escape'&&!enter&&filled())fill(false);});
+    document.addEventListener('fullscreenchange',label);
+    document.addEventListener('webkitfullscreenchange',label);
+    label();frame.appendChild(button);
+
+    // Where the browser's own full-screen button can't be switched off (iPhone, iPad, Safari, Firefox), that player
+    // hides page content but still draws subtitles, so the watermark also rides along as a subtitle line. It shows only
+    // while the video itself is full screen, and switches back on if the student turns subtitles off.
+    if(!enter||!('controlsList' in HTMLMediaElement.prototype)){
+      const track=video.addTextTrack('subtitles','Shikkha Squared','en');
+      const cue=()=>{const c=new VTTCue(0,24*60*60,text);try{c.line=0;c.position=100;c.size=60;c.align='end';c.positionAlign='line-right';}catch{}return c;};
+      const videoFullscreen=()=>fullscreenElement()===video||!!video.webkitDisplayingFullscreen;
+      // hls.js clears subtitle cues when it loads a stream, so the cue is put back whenever it goes missing.
+      const sync=()=>{
+        const want=videoFullscreen()?'showing':'hidden';
+        if(track.mode!==want)track.mode=want;
+        if(track.cues&&!track.cues.length)track.addCue(cue());
+      };
+      track.mode='hidden';sync();
+      for(const name of ['webkitbeginfullscreen','webkitendfullscreen','webkitpresentationmodechanged'])video.addEventListener(name,sync);
+      document.addEventListener('fullscreenchange',sync);
+      document.addEventListener('webkitfullscreenchange',sync);
+      video.textTracks.addEventListener('change',()=>setTimeout(sync,0));
+      setInterval(sync,1000);
     }
   }
 
