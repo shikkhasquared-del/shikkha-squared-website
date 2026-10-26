@@ -4,7 +4,7 @@ import { esc, shell, type Catalogue } from './catalog-pages';
 // services it uses; keep it in step with the code when that changes.
 // While LEGAL_DRAFT is true, both pages say they are drafts under review.
 export const LEGAL_DRAFT=true;
-export const LEGAL_UPDATED='25 October 2026';
+export const LEGAL_UPDATED='26 October 2026';
 
 type Contact={email:string;phone:string;address:string};
 export function legalContact(settings:any):Contact{
@@ -12,7 +12,6 @@ export function legalContact(settings:any):Contact{
 }
 const contactBlock=(c:Contact)=>`<ul class="legal-contact"><li>Email: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></li>${c.phone?`<li>Phone: ${esc(c.phone)}</li>`:''}${c.address?`<li>Address: ${esc(c.address)}</li>`:''}</ul>`;
 const draft=()=>LEGAL_DRAFT?`<p class="legal-draft" role="note"><strong>Draft — under review.</strong> This page is being reviewed by Shikkha Squared and may change before launch.</p>`:'';
-const todo=(text:string)=>`<span class="legal-todo">[${esc(text)}]</span>`;
 
 function page(data:Catalogue,title:string,description:string,body:string){
   return shell(data,{title,description,active:'',page:'legal',styles:['/legal.css?v=1'],body:`<article class="catalog-container legal"><p class="page-eyebrow">SHIKKHA SQUARED</p><h1>${esc(title)}</h1><p class="legal-updated">Last updated: ${LEGAL_UPDATED}</p>${draft()}${body}</article>`});
@@ -109,7 +108,7 @@ export function termsPage(data:Catalogue){
 <p>These terms apply when you use the Shikkha Squared website, create an account or buy a course. By using the website, you agree to them. Please also read our <a href="/privacy">Privacy Policy</a>.</p>
 
 <h2>1. Who we are</h2>
-<p>Shikkha Squared ${todo('registered business or company name, to be confirmed')} provides online learning for O Level, AS and A Level students. You can contact us using the details at the end of this page.</p>
+<p>Shikkha Squared provides online learning for O Level, AS and A Level students. You can contact us using the details at the end of this page.</p>
 
 <h2>2. Your account</h2>
 <ul>
@@ -124,12 +123,16 @@ export function termsPage(data:Catalogue){
 <li>Prices are shown in Bangladeshi Taka (BDT) on each course page and at checkout.</li>
 <li>Payments are processed securely by SSLCommerz. You can pay with bKash, Nagad, Rocket, cards or internet banking, as offered on the payment page.</li>
 <li>Your access starts as soon as your payment is confirmed. Payments flagged by the payment provider's security checks may be held until they are cleared.</li>
-<li>Course access lasts ${todo('access period for each course, for example until the end of the exam session, to be confirmed')}.</li>
+<li>How long your access lasts depends on the type of course:
+<ul>
+<li><strong>Crash courses:</strong> lifetime access, for as long as the course is offered on Shikkha Squared.</li>
+<li><strong>All other courses:</strong> one month from the date your payment is confirmed.</li>
+</ul></li>
 </ul>
 
 <h2>4. Refunds</h2>
-<p>${todo('Refund policy to be confirmed by Shikkha Squared: whether refunds are offered, within how many days, and how to request one')}.</p>
-<p>If a payment is taken but your course access does not appear, contact us with your payment reference and we will sort it out.</p>
+<p>We don't offer automatic refunds. If you believe you should receive a refund, email us at <a href="mailto:${esc(c.email)}">${esc(c.email)}</a> with your payment reference and the reason. We review each request individually and will let you know our decision.</p>
+<p>If a payment is taken but your course access does not appear, email us with your payment reference and we will sort it out.</p>
 
 <h2>5. Using course content</h2>
 <ul>
