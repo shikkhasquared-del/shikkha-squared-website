@@ -8,19 +8,17 @@
   const explain=status=>status===401?'You have been signed out, possibly because your account was used on another device. Log in again to keep watching.':status===403?'This lesson is for enrolled students.':'The video could not be loaded. Check your connection and refresh the page.';
   video.addEventListener('contextmenu',e=>e.preventDefault());
 
-  // Watermark: drifts to a new spot every few seconds. If it is removed or hidden, the video pauses and it comes back.
+  // Watermark: sits in the top-right corner. If it is removed or hidden, the video pauses and it comes back.
   const text=frame&&frame.dataset.mark;
   if(text){
     let mark;
-    const place=()=>{mark.style.left=(4+Math.random()*56)+'%';mark.style.top=(6+Math.random()*78)+'%';};
-    const attach=()=>{mark=document.createElement('div');mark.className='lesson-watermark';mark.setAttribute('aria-hidden','true');mark.textContent=text;frame.appendChild(mark);place();};
+    const attach=()=>{mark=document.createElement('div');mark.className='lesson-watermark';mark.setAttribute('aria-hidden','true');mark.textContent=text;frame.appendChild(mark);};
     const intact=()=>{
       if(!mark.isConnected||mark.parentNode!==frame||mark.textContent!==text)return false;
       const style=getComputedStyle(mark);
       return style.display!=='none'&&style.visibility==='visible'&&Number(style.opacity)>=.15&&mark.offsetWidth>0;
     };
     attach();
-    setInterval(place,7000);
     setInterval(()=>{if(!intact()){video.pause();mark.remove();attach();}},1000);
     // The browser's own full-screen mode would show the video alone, so go full screen with the watermark instead.
     const fullscreen=()=>{
