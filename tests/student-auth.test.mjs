@@ -76,6 +76,25 @@ test('Sessions identify the student until they expire or sign out',async()=>{
   assert.equal(await auth.sessionStudent(db,second,t0),null);
 });
 
+test('An account stays signed in on at most two devices',async()=>{
+  const db=database();
+  const student=await auth.studentForPhone(db,'+8801712345678',null,t0);
+  const phone=await auth.createSession(db,student.id,t0);
+  const laptop=await auth.createSession(db,student.id,t0+1000);
+  // Signing in again on the same browser replaces its own session instead of pushing another device out.
+  const laptopAgain=await auth.createSession(db,student.id,t0+2000,laptop);
+  assert.equal(await auth.sessionStudent(db,laptop,t0+2000),null);
+  assert.equal((await auth.sessionStudent(db,phone,t0+2000)).id,student.id);
+  const friend=await auth.createSession(db,student.id,t0+3000);
+  assert.equal(await auth.sessionStudent(db,phone,t0+3000),null);
+  assert.equal((await auth.sessionStudent(db,laptopAgain,t0+3000)).id,student.id);
+  assert.equal((await auth.sessionStudent(db,friend,t0+3000)).id,student.id);
+  const other=await auth.studentForPhone(db,'+8801812345678',null,t0);
+  await auth.createSession(db,other.id,t0+4000);
+  assert.equal((await auth.sessionStudent(db,friend,t0+4000)).id,student.id);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM student_sessions').first()).n,3);
+});
+
 test('Phone and Google sign-ins find, create and link accounts without takeovers',async()=>{
   const db=database();
   const a=await auth.studentForPhone(db,'+8801712345678',null,t0);

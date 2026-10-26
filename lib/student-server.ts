@@ -24,7 +24,7 @@ export function redirect(location:string,cookies:string[]=[]){
   return new Response(null,{status:303,headers});
 }
 export async function signedIn(request:Request,studentId:string,next:string,extraCookies:string[]=[]){
-  const token=await createSession(studentDb(),studentId);
+  const token=await createSession(studentDb(),studentId,Date.now(),readCookie(request,SESSION_COOKIE));
   return redirect(next,[...extraCookies,cookie(request,SESSION_COOKIE,token,{maxAge:SESSION_TTL_MS/1000})]);
 }
 export async function formInput(request:Request){

@@ -11,6 +11,8 @@ export const CODES_PER_PHONE=3, CODES_PER_PHONE_WINDOW_MS=15*60*1000;
 export const CODES_PER_IP=10, CODES_PER_IP_WINDOW_MS=60*60*1000;
 export const SESSION_TTL_MS=30*24*60*60*1000;
 export const SESSION_COOKIE='ss_session';
+// How many devices can be signed in to one account at once; signing in on another signs out the oldest.
+export const MAX_DEVICES=2;
 
 // Bangladeshi mobile numbers: 01[3-9] followed by 8 digits, with or without +88 / 88.
 export function normalizePhone(input:unknown):string|null {
@@ -107,9 +109,12 @@ export async function updateStudentName(db:D1Database,student:Student,name:unkno
   return (await studentById(db,student.id))!;
 }
 
-export async function createSession(db:D1Database,studentId:string,now=Date.now()){
+// `replacing` is this browser's previous session, so signing in again on the same device doesn't use up a second slot.
+export async function createSession(db:D1Database,studentId:string,now=Date.now(),replacing:string|null=null){
+  await endSession(db,replacing);
   const token=randomToken();
   await db.prepare('INSERT INTO student_sessions(id,student_id,created_at,expires_at) VALUES(?,?,?,?)').bind(await sha256(token),studentId,iso(now),iso(now+SESSION_TTL_MS)).run();
+  await db.prepare('DELETE FROM student_sessions WHERE student_id=? AND id NOT IN (SELECT id FROM student_sessions WHERE student_id=? AND expires_at>? ORDER BY created_at DESC,rowid DESC LIMIT ?)').bind(studentId,studentId,iso(now),MAX_DEVICES).run();
   return token;
 }
 export async function sessionStudent(db:D1Database,token:string|null,now=Date.now()){

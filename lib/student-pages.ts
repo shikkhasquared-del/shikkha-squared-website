@@ -1,5 +1,5 @@
 import { esc, shell, type Catalogue } from './catalog-pages';
-import { displayPhone, type Student } from './student-auth';
+import { MAX_DEVICES, displayPhone, type Student } from './student-auth';
 import { taka, type Order, type Enrolment } from './payments';
 import { accessLabel, accessSummary, type Access } from './access';
 
@@ -13,7 +13,7 @@ const phoneForm=(next:string,label='Send code')=>`<form class="auth-form" method
 const googleButton=(enabled:boolean,next:string,label='Continue with Google')=>enabled?`<a class="page-button outline auth-google" href="/auth/google?next=${encodeURIComponent(next)}">${googleIcon}${label}</a>`:`<p class="auth-muted">Google sign-in is coming soon.</p>`;
 
 export function loginPage({next,google,error,notice,status}:{next:string;google:boolean;error?:string;notice?:string;status?:number}){
-  return page('Log in',`<div class="auth-card"><p class="page-eyebrow">STUDENT ACCOUNT</p><h1>Welcome to your classroom.</h1><p class="auth-lead">Sign in with your mobile number or Google. New here? Your account is created the first time you sign in.</p>${message(error,notice)}${phoneForm(next)}<div class="auth-or"><span>or</span></div>${googleButton(google,next)}<p class="auth-muted auth-legal">By continuing, you agree to our <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.</p></div>`,status);
+  return page('Log in',`<div class="auth-card"><p class="page-eyebrow">STUDENT ACCOUNT</p><h1>Welcome to your classroom.</h1><p class="auth-lead">Sign in with your mobile number or Google. New here? Your account is created the first time you sign in.</p>${message(error,notice)}${phoneForm(next)}<div class="auth-or"><span>or</span></div>${googleButton(google,next)}<p class="auth-muted auth-legal">You can be signed in on up to ${MAX_DEVICES} devices. Signing in on another device signs out the one that signed in earliest.</p><p class="auth-muted auth-legal">By continuing, you agree to our <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.</p></div>`,status);
 }
 
 export function codePage({phone,next,error,notice,status}:{phone:string;next:string;error?:string;notice?:string;status?:number}){

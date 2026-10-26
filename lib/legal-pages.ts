@@ -39,7 +39,7 @@ export function privacyPage(data:Catalogue){
 <h3>When you study</h3>
 <ul>
 <li>Which courses you are enrolled in and how you got access (online payment, or added by our team, for example after a cash payment or a scholarship).</li>
-<li>When you watch a lesson, your browser requests the video through this website and our video delivery network. Like any website, these services see your IP address and browser type when you connect.</li>
+<li>When you watch a lesson, your browser requests the video through this website and our video delivery network. Like any website, these services see your IP address and browser type when you connect. While you watch, the player shows your name and mobile number or email on top of the video, to discourage copying; this is shown only on your own screen.</li>
 </ul>
 <h3>Stored on your own device</h3>
 <ul>
@@ -113,6 +113,7 @@ export function termsPage(data:Catalogue){
 <h2>2. Your account</h2>
 <ul>
 <li>Your account is for you alone. Please do not share your sign-in details, codes or account with anyone.</li>
+<li>Your account can be signed in on up to 2 devices at a time. Signing in on another device signs out the one that signed in earliest.</li>
 <li>Give accurate information, and keep your mobile number and email up to date so you can always sign in.</li>
 <li>If you are under 18, a parent or guardian should know you are using Shikkha Squared and approve any purchases.</li>
 <li>Tell us straight away if you think someone else has used your account.</li>
@@ -138,6 +139,7 @@ export function termsPage(data:Catalogue){
 <ul>
 <li>Courses, videos, notes and other materials are for your own personal study only.</li>
 <li>Do not download, record, copy, share, resell or publish course content, or share links to it, without our written permission.</li>
+<li>Lesson videos show your name and mobile number or email while you watch, so that copies can be traced back to the account they came from.</li>
 <li>We may suspend or close accounts that share content or access, and remove access without a refund in serious cases.</li>
 </ul>
 
