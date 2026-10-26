@@ -8,9 +8,9 @@ import { DatabaseSync } from 'node:sqlite';
 
 const output=path.resolve('.test-output/payments'),outputUrl=pathToFileURL(output).href;
 await fs.mkdir(output,{recursive:true});
-for(const name of ['student-auth','payments']){
+for(const name of ['student-auth','payments','access']){
   const source=await fs.readFile('lib/'+name+'.ts','utf8');
-  await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace("from './student-auth'","from './student-auth.mjs'"));
+  await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace("from './student-auth'","from './student-auth.mjs'").replace("from './access'","from './access.mjs'"));
 }
 const pay=await import(outputUrl+'/payments.mjs');
 const sql=(await Promise.all((await fs.readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort().map(f=>fs.readFile('drizzle/'+f,'utf8')))).join('\n');
@@ -132,4 +132,53 @@ test('A student returning before the notification arrives is confirmed by lookin
   assert.ok(calls[0].url.includes('merchantTransIDvalidationAPI.php')&&calls[0].url.includes('tran_id='+order.tranId));
   const quiet=await pay.refreshPendingOrder(db,config,{...order,status:'pending',tranId:'NONE'},async()=>Response.json({APIConnect:'DONE',no_of_trans_found:0}),t0);
   assert.equal(quiet.status,'pending');
+});
+
+const access=await import(outputUrl+'/access.mjs');
+const addCourseRecord=(sqlite,slug,format)=>sqlite.prepare("INSERT INTO records(id,kind,title,status,data,unique_key,version,created_at,updated_at) VALUES(?,?,?,?,?,?,1,'x','x')").run('rec-'+slug,'course',slug,'published',JSON.stringify({slug,format}),slug);
+
+test('Access lasts one calendar month, or for life for crash courses',()=>{
+  const month=iso=>new Date(access.addOneMonth(Date.parse(iso))).toISOString();
+  assert.equal(month('2026-10-26T08:00:00.000Z'),'2026-11-26T08:00:00.000Z');
+  assert.equal(month('2026-12-15T00:00:00.000Z'),'2027-01-15T00:00:00.000Z');
+  assert.equal(month('2027-01-31T10:00:00.000Z'),'2027-02-28T10:00:00.000Z','short months end on their last day');
+  assert.equal(month('2028-01-31T10:00:00.000Z'),'2028-02-29T10:00:00.000Z','leap years too');
+  assert.equal(access.accessEndsAt('crash',t0),null);
+  assert.equal(access.accessEndsAt('full',t0),new Date(access.addOneMonth(t0)).toISOString());
+  assert.deepEqual([access.accessLabel('crash'),access.accessLabel('papers')],['Lifetime access','1 month access']);
+  assert.equal(access.accessSummary({active:true,expiresAt:null}),'Lifetime access');
+  assert.match(access.accessSummary({active:true,expiresAt:'2026-11-26T08:00:00.000Z'}),/^Access until 26 November 2026$/);
+  assert.match(access.accessSummary({active:false,expiresAt:'2026-11-26T08:00:00.000Z'}),/^Access ended 26 November 2026$/);
+});
+
+test('Paying for a full course gives one month; a crash course gives lifetime access',async()=>{
+  const {db,sqlite,student}=setup();
+  addCourseRecord(sqlite,'physics-as','full');addCourseRecord(sqlite,'physics-crash','crash');
+  for(const [slug,expected] of [['physics-as',new Date(access.addOneMonth(t0)).toISOString()],['physics-crash',null]]){
+    const order=await pay.createOrder(db,student,{...course,id:slug},{email:'a@b.co',phone:'+8801712345678'},t0);
+    const g=gateway();g.calls.tran=order.tranId;
+    await pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0);
+    assert.equal((await pay.enrolmentFor(db,student.id,slug,t0)).expires_at,expected,slug);
+  }
+  assert.equal(await pay.isEnrolled(db,student.id,'physics-crash',t0+10*365*864e5),true,'lifetime never ends');
+});
+
+test('Expired access stops counting, and paying again renews it',async()=>{
+  const {db,sqlite,student}=setup();
+  addCourseRecord(sqlite,'physics-as','full');
+  const first=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0);
+  const g1=gateway();g1.calls.tran=first.tranId;
+  await pay.settleOrder(db,config,first.tranId,'VAL1',g1.fetcher,t0);
+  const ends=Date.parse((await pay.enrolmentFor(db,student.id,'physics-as',t0)).expires_at);
+  assert.equal(await pay.isEnrolled(db,student.id,'physics-as',ends-1000),true);
+  assert.equal(await pay.isEnrolled(db,student.id,'physics-as',ends+1000),false,'access ends on the end date');
+  assert.equal((await pay.enrolmentsFor(db,student.id,ends+1000))[0].active,false);
+  await failsWith(pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},ends-1000),409);
+  const later=ends+5*864e5;
+  const second=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},later);
+  const g2=gateway();g2.calls.tran=second.tranId;
+  await pay.settleOrder(db,config,second.tranId,'VAL1',g2.fetcher,later);
+  const renewed=await pay.enrolmentFor(db,student.id,'physics-as',later);
+  assert.equal(renewed.active,true);assert.equal(renewed.expires_at,new Date(access.addOneMonth(later)).toISOString());
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM enrolments').get().n,1,'renewal updates the same enrolment');
 });

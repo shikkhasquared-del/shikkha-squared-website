@@ -5,8 +5,8 @@ import path from 'node:path';
 import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
 const output=path.resolve('.test-output/pages'),outputUrl=pathToFileURL(output).href;await fs.mkdir(output,{recursive:true});
-await fs.writeFile(output+'/student-server.mjs','export async function viewerEnrolled(){return false;}');
-for(const name of ['catalog-pages','course-taxonomy','route-slug']){let source=await fs.readFile('lib/'+name+'.ts','utf8');if(name==='catalog-pages')source=source.replace("import { readCMS } from './cms-read';",'const readCMS=async()=>{throw new Error("Not used by rendering tests");};');await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './course-taxonomy'","from './course-taxonomy.mjs'"));}
+await fs.writeFile(output+'/student-server.mjs','export async function viewerAccess(){return null;}');
+for(const name of ['catalog-pages','course-taxonomy','route-slug','access']){let source=await fs.readFile('lib/'+name+'.ts','utf8');if(name==='catalog-pages')source=source.replace("import { readCMS } from './cms-read';",'const readCMS=async()=>{throw new Error("Not used by rendering tests");};');await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './course-taxonomy'","from './course-taxonomy.mjs'").replace("from './access'","from './access.mjs'"));}
 const {coursesPage,instructorsPage,coursePage,instructorPage,sectionPage}=await import(outputUrl+'/catalog-pages.mjs');
 const section={id:'cambridge-as',title:'Cambridge AS',description:'AS courses',mode:'rules',board:'cambridge',level:'as',format:'all'};
 const person={id:'bappi-sir',title:'Bappi Sir',subjects:'Physics',designation:'Instructor',bio:'Teaching Physics.',photoUrl:'',aliases:''};

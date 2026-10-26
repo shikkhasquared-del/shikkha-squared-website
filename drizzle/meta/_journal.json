@@ -15,6 +15,13 @@
       "when": 1792411270929,
       "tag": "0001_orders_enrolments",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793005623238,
+      "tag": "0002_enrolment_expiry",
+      "breakpoints": true
     }
   ]
 }

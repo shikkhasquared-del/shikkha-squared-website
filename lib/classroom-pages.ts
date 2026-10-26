@@ -1,6 +1,7 @@
 import { esc, shell, type Catalogue } from './catalog-pages';
 import { canOpen, videoSource } from './lessons';
 import { purchasable, taka } from './payments';
+import { accessDate, accessSummary } from './access';
 import type { Classroom } from './classroom';
 
 // The classroom: one lesson at a time with the course's lesson list beside it.
@@ -12,6 +13,10 @@ function lockedPanel(room:Classroom,index:number){
   const back=`/learn/${room.slug}?lesson=${index}`;
   if(!room.student)return `<div class="lesson-locked"><strong>Sign in to continue.</strong><p>This lesson is for enrolled students.</p><a class="page-button" href="/login?next=${encodeURIComponent(back)}">Log in</a></div>`;
   const buy=purchasable(room.course)?`<a class="page-button" href="/checkout?course=${encodeURIComponent(room.slug)}">Buy this course · ${esc(taka(room.course.priceMinor))}</a>`:`<a class="page-button" href="/courses/${encodeURIComponent(room.slug)}">See enrolment options</a>`;
+  if(room.access&&!room.access.active){
+    const renew=purchasable(room.course)?`<a class="page-button" href="/checkout?course=${encodeURIComponent(room.slug)}">Renew access · ${esc(taka(room.course.priceMinor))}</a>`:`<a class="page-button" href="/courses/${encodeURIComponent(room.slug)}">See enrolment options</a>`;
+    return `<div class="lesson-locked"><strong>Your access ended on ${esc(accessDate(room.access.expiresAt!))}.</strong><p>Renew the course to keep learning.</p>${renew}</div>`;
+  }
   return `<div class="lesson-locked"><strong>This lesson is for enrolled students.</strong><p>Enrol in the course to open every lesson.</p>${buy}</div>`;
 }
 
@@ -29,11 +34,11 @@ function lessonPanel(room:Classroom,index:number,hosts:string[]){
 
 export function classroomPage(room:Classroom,requested:number,hosts:string[]){
   const title=String(room.course.title||'Course');
-  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=3','/classroom.css?v=1'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
+  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=4','/classroom.css?v=2'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
   const index=Number.isInteger(requested)&&requested>=0&&requested<room.lessons.length?requested:Math.max(0,room.lessons.findIndex(l=>canOpen(l,room.enrolled)));
   const lesson=room.lessons[index];
   const list=room.lessons.map((l,i)=>{const open=canOpen(l,room.enrolled);return `<li><a href="/learn/${room.slug}?lesson=${i}" ${i===index?'aria-current="true"':''} class="${open?'':'locked'}"><span class="lesson-number">${String(i+1).padStart(2,'0')}</span><span class="lesson-name">${esc(l.title)}<small>${esc(kinds[l.kind]||l.kind)}${l.duration?' · '+esc(l.duration):''}${l.free&&!room.enrolled?' · Free preview':''}${open?'':' · Locked'}</small></span></a></li>`;}).join('');
   const nav=`<div class="lesson-nav">${index>0?`<a class="page-button outline" href="/learn/${room.slug}?lesson=${index-1}">Previous</a>`:'<span></span>'}${index<room.lessons.length-1?`<a class="page-button" href="/learn/${room.slug}?lesson=${index+1}">Next lesson</a>`:''}</div>`;
-  const body=`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="${room.enrolled?'/account':'/courses/'+encodeURIComponent(room.slug)}">${room.enrolled?'My courses':'Course details'}</a> / <span>${esc(title)}</span></nav><div class="classroom-grid"><div class="classroom-main">${lessonPanel(room,index,hosts)}<p class="page-eyebrow">LESSON ${index+1} OF ${room.lessons.length}</p><h1>${esc(lesson.title)}</h1>${canOpen(lesson,room.enrolled)&&lesson.notes?`<p class="lesson-notes">${esc(lesson.notes)}</p>`:''}${nav}</div><aside class="classroom-lessons" aria-label="Course lessons"><h2>${esc(title)}</h2><ol>${list}</ol></aside></div></section>`;
-  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=3','/classroom.css?v=1'],scripts:[HLS,{src:'/player.js?v=1'}],headers:{'x-frame-options':'DENY'},body});
+  const body=`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="${room.enrolled?'/account':'/courses/'+encodeURIComponent(room.slug)}">${room.enrolled?'My courses':'Course details'}</a> / <span>${esc(title)}</span></nav><div class="classroom-grid"><div class="classroom-main">${lessonPanel(room,index,hosts)}<p class="page-eyebrow">LESSON ${index+1} OF ${room.lessons.length}</p><h1>${esc(lesson.title)}</h1>${canOpen(lesson,room.enrolled)&&lesson.notes?`<p class="lesson-notes">${esc(lesson.notes)}</p>`:''}${nav}</div><aside class="classroom-lessons" aria-label="Course lessons"><h2>${esc(title)}${room.access?`<small class="classroom-access">${esc(accessSummary(room.access))}</small>`:''}</h2><ol>${list}</ol></aside></div></section>`;
+  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=4','/classroom.css?v=2'],scripts:[HLS,{src:'/player.js?v=1'}],headers:{'x-frame-options':'DENY'},body});
 }

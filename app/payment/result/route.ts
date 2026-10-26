@@ -1,4 +1,4 @@
-import { orderById, refreshPendingOrder } from '../../../lib/payments';
+import { enrolmentFor, orderById, refreshPendingOrder } from '../../../lib/payments';
 import { paymentResultPage } from '../../../lib/student-pages';
 import { currentStudent, gatewayConfig, redirect, studentDb } from '../../../lib/student-server';
 export const dynamic='force-dynamic';
@@ -11,5 +11,6 @@ export async function GET(request:Request){
   if(!order||order.studentId!==student.id)return redirect('/account');
   const config=gatewayConfig();
   if(config)order=await refreshPendingOrder(db,config,order).catch(()=>order!);
-  return paymentResultPage(order);
+  const enrolment=order.status==='paid'?await enrolmentFor(db,student.id,order.courseSlug):null;
+  return paymentResultPage(order,enrolment?{active:enrolment.active,expiresAt:enrolment.expires_at}:null);
 }

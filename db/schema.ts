@@ -28,4 +28,6 @@ export const orders = sqliteTable('orders', {
 export const enrolments = sqliteTable('enrolments', {
   id: text('id').primaryKey(), studentId: text('student_id').notNull(), courseSlug: text('course_slug').notNull(), courseTitle: text('course_title').notNull(),
   source: text('source').notNull(), orderId: text('order_id'), createdAt: text('created_at').notNull(),
+  // When access ends; empty means lifetime (crash courses). See accessEndsAt in lib/payments.ts.
+  expiresAt: text('expires_at'),
 }, table => [uniqueIndex('enrolments_student_course').on(table.studentId, table.courseSlug)]);

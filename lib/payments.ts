@@ -3,6 +3,7 @@
 // order is only marked paid after SSLCommerz's validation API confirms the transaction, its
 // amount and its currency. Runtime configuration is passed in so this stays testable.
 import { normalizePhone, type Student } from './student-auth';
+import { accessEndsAt } from './access';
 
 export class PaymentFailure extends Error {status:number;constructor(message:string,status=400){super(message);this.status=status;}}
 export type GatewayConfig={storeId:string;storePassword:string;live:boolean};
@@ -20,8 +21,11 @@ const dhakaDate=(ms:number)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dha
 export function rowToOrder(r:any):Order {return {id:r.id,tranId:r.tran_id,studentId:r.student_id,courseSlug:r.course_slug,courseTitle:r.course_title,amountMinor:r.amount_minor,currency:r.currency,email:r.email,phone:r.phone,status:r.status,note:r.note,createdAt:r.created_at,paidAt:r.paid_at};}
 export async function orderById(db:D1Database,id:string){const r=await db.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();return r?rowToOrder(r):null;}
 export async function orderByTranId(db:D1Database,tranId:string){const r=await db.prepare('SELECT * FROM orders WHERE tran_id=?').bind(tranId).first();return r?rowToOrder(r):null;}
-export async function isEnrolled(db:D1Database,studentId:string,courseSlug:string){return !!await db.prepare('SELECT 1 FROM enrolments WHERE student_id=? AND course_slug=?').bind(studentId,courseSlug).first();}
-export async function enrolmentsFor(db:D1Database,studentId:string){return (await db.prepare('SELECT course_slug,course_title,created_at FROM enrolments WHERE student_id=? ORDER BY created_at DESC').bind(studentId).all<{course_slug:string;course_title:string;created_at:string}>()).results;}
+export type Enrolment={course_slug:string;course_title:string;created_at:string;expires_at:string|null;active:boolean};
+const withActive=(r:any,now:number):Enrolment=>({...r,active:!r.expires_at||Date.parse(r.expires_at)>now});
+export async function enrolmentFor(db:D1Database,studentId:string,courseSlug:string,now=Date.now()){const r=await db.prepare('SELECT course_slug,course_title,created_at,expires_at FROM enrolments WHERE student_id=? AND course_slug=?').bind(studentId,courseSlug).first();return r?withActive(r,now):null;}
+export async function isEnrolled(db:D1Database,studentId:string,courseSlug:string,now=Date.now()){return !!(await enrolmentFor(db,studentId,courseSlug,now))?.active;}
+export async function enrolmentsFor(db:D1Database,studentId:string,now=Date.now()){return (await db.prepare('SELECT course_slug,course_title,created_at,expires_at FROM enrolments WHERE student_id=? ORDER BY created_at DESC').bind(studentId).all()).results.map(r=>withActive(r,now));}
 
 // Contact details SSLCommerz requires; taken from the form, falling back to the account.
 export function checkoutContact(student:Student,form:{email?:string;phone?:string}){
@@ -34,7 +38,7 @@ export function checkoutContact(student:Student,form:{email?:string;phone?:strin
 
 export async function createOrder(db:D1Database,student:Student,course:any,contact:{email:string;phone:string},now=Date.now()):Promise<Order>{
   if(!purchasable(course))throw new PaymentFailure('This course is not available to buy online. Contact admissions to enrol.',409);
-  if(await isEnrolled(db,student.id,course.id))throw new PaymentFailure('You are already enrolled in this course.',409);
+  if(await isEnrolled(db,student.id,course.id,now))throw new PaymentFailure('You are already enrolled in this course.',409);
   const id=crypto.randomUUID();
   const tranId=('SS'+now.toString(36)+crypto.randomUUID().replace(/-/g,'').slice(0,10)).toUpperCase();
   await db.prepare('INSERT INTO orders(id,tran_id,student_id,course_slug,course_title,amount_minor,currency,email,phone,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -92,7 +96,13 @@ export async function settleOrder(db:D1Database,config:GatewayConfig,tranId:stri
   // A forged fail/cancel callback can't block a genuine payment, so paid wins over those states.
   const changed=await db.prepare("UPDATE orders SET status='paid',val_id=?,bank_tran_id=?,card_type=?,paid_at=?,updated_at=? WHERE id=? AND status IN ('pending','failed','cancelled','review') RETURNING id").bind(valId,details.bankTranId,details.cardType,iso(now),iso(now),order.id).first();
   if(changed){
-    await db.prepare('INSERT OR IGNORE INTO enrolments(id,student_id,course_slug,course_title,source,order_id,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),order.studentId,order.courseSlug,order.courseTitle,'payment',order.id,iso(now)).run();
+    // A first purchase starts access; buying again after it ends renews it. Lifetime access stays
+    // lifetime, and a later end date (for example one staff already extended to) is never shortened.
+    const course=await db.prepare("SELECT json_extract(data,'$.format') AS format FROM records WHERE kind='course' AND unique_key=?").bind(order.courseSlug).first<{format:string}>();
+    await db.prepare(`INSERT INTO enrolments(id,student_id,course_slug,course_title,source,order_id,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)
+      ON CONFLICT(student_id,course_slug) DO UPDATE SET source=excluded.source,order_id=excluded.order_id,course_title=excluded.course_title,
+      expires_at=CASE WHEN enrolments.expires_at IS NULL OR excluded.expires_at IS NULL THEN NULL ELSE max(enrolments.expires_at,excluded.expires_at) END`)
+      .bind(crypto.randomUUID(),order.studentId,order.courseSlug,order.courseTitle,'payment',order.id,iso(now),accessEndsAt(course?.format,now)).run();
     const student=await db.prepare('SELECT name FROM students WHERE id=?').bind(order.studentId).first<{name:string}>();
     await recordInAdminLedger(db,order,student?{name:student.name} as Student:null,details,now);
   }

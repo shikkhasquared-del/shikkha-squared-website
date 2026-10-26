@@ -1,0 +1,1 @@
+ALTER TABLE `enrolments` ADD `expires_at` text;

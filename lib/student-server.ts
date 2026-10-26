@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { AuthFailure, SESSION_COOKIE, SESSION_TTL_MS, cookie, createSession, readCookie, sessionStudent } from './student-auth';
 import type { GoogleConfig } from './google-auth';
-import { PaymentFailure, isEnrolled, type GatewayConfig } from './payments';
+import { PaymentFailure, enrolmentFor, type GatewayConfig } from './payments';
 
 // Worker-side glue for student accounts: bindings, configuration and responses.
 export function studentDb(){if(!env.DB)throw new AuthFailure('Student accounts are unavailable right now.',503);return env.DB;}
@@ -34,7 +34,7 @@ export async function formInput(request:Request){
   return (name:string)=>{const value=form.get(name);return typeof value==='string'?value:'';};
 }
 export const failureMessage=(e:unknown)=>e instanceof AuthFailure||e instanceof PaymentFailure?{error:e.message,status:e.status}:(console.error('Student account error',e instanceof Error?e.message:'Unknown'),{error:'Something went wrong. Please try again.',status:500});
-// Whether the signed-in visitor (if any) is enrolled in a course. Never fails a page render.
-export async function viewerEnrolled(request:Request,courseSlug:string){
-  try{const student=await currentStudent(request);return !!student&&await isEnrolled(studentDb(),student.id,courseSlug);}catch{return false;}
+// The signed-in visitor's access to a course, if they have ever had any. Never fails a page render.
+export async function viewerAccess(request:Request,courseSlug:string){
+  try{const student=await currentStudent(request);const row=student?await enrolmentFor(studentDb(),student.id,courseSlug):null;return row?{active:row.active,expiresAt:row.expires_at}:null;}catch{return null;}
 }
