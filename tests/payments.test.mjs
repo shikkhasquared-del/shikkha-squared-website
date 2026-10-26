@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-const output=path.resolve('.sites-runtime/test-payments'),outputUrl=pathToFileURL(output).href;
+const output=path.resolve('.test-output/payments'),outputUrl=pathToFileURL(output).href;
 await fs.mkdir(output,{recursive:true});
 for(const name of ['student-auth','payments']){
   const source=await fs.readFile('lib/'+name+'.ts','utf8');

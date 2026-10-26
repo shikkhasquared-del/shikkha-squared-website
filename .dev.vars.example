@@ -1,6 +1,7 @@
-# Copy to .dev.vars for local use. Configure actual credentials separately.
-CMS_ORIGIN="https://shikkha-squared-admin.fairnote16.chatgpt.site"
-CMS_READ_TOKEN="REPLACE_WITH_ADMIN_SITE_SERVICE_TOKEN"
+# Local development. Copy to .dev.vars (which Git ignores) and fill in real values separately.
+# The catalogue comes from the admin's local dev server. On Cloudflare it comes through the CMS
+# service binding instead (deploy/cloudflare.json), so CMS_ORIGIN is not set there.
+CMS_ORIGIN="http://localhost:5173"
 
 # Student accounts
 # OTP_PEPPER: a long random secret used to hash sign-in codes (required for phone sign-in).

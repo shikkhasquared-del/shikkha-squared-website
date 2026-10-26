@@ -37,23 +37,16 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 
-# Maintained Vite plugin and worker sources.
+# The Worker entry point.
 !/build/
 /build/*
-!/build/connector-preview-plugin.mjs
-!/build/connector-preview-worker.mjs
-!/build/sites-vite-plugin.LICENSE
-!/build/sites-vite-plugin.ts
-!/build/sites-worker.ts
+!/build/worker.ts
 
 /dist/
 /.wrangler/
-# Checkout-local execution profile and tool state; never publish them.
+# Local pnpm package store (see pnpm-workspace.yaml) and test build output.
 /.sites-runtime/
-/.agents/
-/.codex/
-/outputs/
-/work/
+/.test-output/
 
 # local secrets (Wrangler / Cloudflare)
 .dev.vars

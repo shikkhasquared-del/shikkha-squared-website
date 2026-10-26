@@ -6,7 +6,7 @@ import ts from 'typescript';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
-const output=path.resolve('.sites-runtime/test-lessons'),outputUrl=pathToFileURL(output).href;
+const output=path.resolve('.test-output/lessons'),outputUrl=pathToFileURL(output).href;
 await fs.mkdir(output,{recursive:true});
 await fs.writeFile(output+'/lessons.mjs',ts.transpileModule(await fs.readFile('lib/lessons.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText);
 const L=await import(outputUrl+'/lessons.mjs');

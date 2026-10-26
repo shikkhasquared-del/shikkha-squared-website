@@ -1,4 +1,5 @@
-# Copied Sites are standalone projects and cannot inherit the monorepo policy.
+# Dependency policy: only install releases at least a week old, and only let the listed
+# packages run install scripts.
 minimumReleaseAge: 10080
 minimumReleaseAgeIgnoreMissingTime: false
 trustLockfile: false

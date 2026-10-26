@@ -3,8 +3,8 @@ declare namespace Cloudflare {
     DB?: D1Database;
     BUCKET?: R2Bucket;
     CMS?: Fetcher;
+    // Local dev only: the admin's dev server, e.g. http://localhost:5173. Cloudflare uses CMS.
     CMS_ORIGIN?: string;
-    CMS_READ_TOKEN?: string;
     // Student accounts
     OTP_PEPPER?: string;
     SMS_PROVIDER?: string;

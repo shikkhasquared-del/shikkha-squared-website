@@ -14,5 +14,5 @@ function run(args, env = {}) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run(["scripts/run-framework.mjs", "build"], { SHIKKHA_DEPLOY: config });
-run(["--import", "./scripts/sites-env.mjs", "./node_modules/wrangler/bin/wrangler.js", "deploy", "--config", "dist/server/wrangler.json", ...process.argv.slice(2)]);
+run(["./node_modules/vinext/dist/cli.js", "build"], { SHIKKHA_DEPLOY: config });
+run(["--import", "./scripts/wrangler-env.mjs", "./node_modules/wrangler/bin/wrangler.js", "deploy", "--config", "dist/server/wrangler.json", ...process.argv.slice(2)]);
