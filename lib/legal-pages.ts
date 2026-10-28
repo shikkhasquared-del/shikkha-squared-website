@@ -4,7 +4,7 @@ import { esc, shell, type Catalogue } from './catalog-pages';
 // services it uses; keep it in step with the code when that changes.
 // While LEGAL_DRAFT is true, both pages say they are drafts under review.
 export const LEGAL_DRAFT=true;
-export const LEGAL_UPDATED='26 October 2026';
+export const LEGAL_UPDATED='28 October 2026';
 
 type Contact={email:string;phone:string;address:string};
 export function legalContact(settings:any):Contact{
@@ -129,6 +129,7 @@ export function termsPage(data:Catalogue){
 <li><strong>Crash courses:</strong> lifetime access, for as long as the course is offered on Shikkha Squared.</li>
 <li><strong>All other courses:</strong> one month from the date your payment is confirmed.</li>
 </ul></li>
+<li>You can renew a monthly course by paying again, from 7 days before your access ends. If you renew before it ends, the extra month starts when your current access ends, so you don't lose any days.</li>
 </ul>
 
 <h2>4. Refunds</h2>
