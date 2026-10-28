@@ -49,3 +49,5 @@ html.lesson-filled,html.lesson-filled body{overflow:hidden}
 .lesson-restart{background:none;border:0;padding:0;color:#ffa366;font:inherit;text-decoration:underline;cursor:pointer}
 .lesson-done-form{margin:18px 0 0}
 .lesson-done{margin:18px 0 0;color:#7fd8a6;font-size:14px}
+.classroom-renew{margin:0 0 14px;padding:12px 14px;border:1px solid #ff791a66;border-radius:12px;background:#ff791a14;color:#ffd2b0;font-size:14px}
+.classroom-renew a{color:#ffa366;font-weight:600}

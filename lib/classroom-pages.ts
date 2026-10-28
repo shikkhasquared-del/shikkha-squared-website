@@ -1,7 +1,7 @@
 import { esc, shell, type Catalogue } from './catalog-pages';
 import { canOpen, videoSource } from './lessons';
 import { purchasable, taka } from './payments';
-import { accessDate, accessSummary } from './access';
+import { accessDate, accessSummary, endingNotice, endingSoon } from './access';
 import { displayPhone, type Student } from './student-auth';
 import { clock, resumeAt, resumeIndex } from './progress';
 import type { Classroom } from './classroom';
@@ -13,6 +13,13 @@ const kinds:Record<string,string>={video:'Video',reading:'Reading',quiz:'Quiz','
 
 // Shown over the video so a recording or screenshot identifies the account it came from.
 const watermark=(s:Student)=>[s.name,s.phone?displayPhone(s.phone):s.email].filter(Boolean).join(' · ')||s.id.slice(0,8);
+
+// A week before monthly access ends, a reminder to renew sits above the lesson.
+function renewNotice(room:Classroom){
+  if(!room.access||!endingSoon(room.access))return '';
+  const href=purchasable(room.course)?`/checkout?course=${encodeURIComponent(room.slug)}`:`/courses/${encodeURIComponent(room.slug)}`;
+  return `<p class="classroom-renew" role="status">${esc(endingNotice(room.access))} <a href="${href}">Renew now</a> to add another month.</p>`;
+}
 
 function lockedPanel(room:Classroom,index:number){
   const back=`/learn/${room.slug}?lesson=${index}`;
@@ -42,7 +49,7 @@ function lessonPanel(room:Classroom,index:number,hosts:string[]){
 
 export function classroomPage(room:Classroom,requested:number,hosts:string[]){
   const title=String(room.course.title||'Course');
-  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=5','/classroom.css?v=8'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
+  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=6','/classroom.css?v=9'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
   const openable=(l:typeof room.lessons[number])=>canOpen(l,room.enrolled);
   const index=Number.isInteger(requested)&&requested>=0&&requested<room.lessons.length?requested:resumeIndex(room.lessons,room.progress,openable);
   const lesson=room.lessons[index];
@@ -53,6 +60,6 @@ export function classroomPage(room:Classroom,requested:number,hosts:string[]){
   const finished=status(lesson)==='done';
   const markDone=room.student&&openable(lesson)&&!videoSource(lesson.resourceUrl,hosts)?(finished?'<p class="lesson-done">✓ You finished this lesson.</p>':`<form method="post" action="/learn/${room.slug}/progress" class="lesson-done-form"><input type="hidden" name="lesson" value="${index}"><input type="hidden" name="done" value="1"><button class="page-button outline" type="submit">Mark as done</button></form>`):'';
   const nav=`<div class="lesson-nav">${index>0?`<a class="page-button outline" href="/learn/${room.slug}?lesson=${index-1}">Previous</a>`:'<span></span>'}${index<room.lessons.length-1?`<a class="page-button" href="/learn/${room.slug}?lesson=${index+1}">Next lesson</a>`:''}</div>`;
-  const body=`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="${room.enrolled?'/account':'/courses/'+encodeURIComponent(room.slug)}">${room.enrolled?'My courses':'Course details'}</a> / <span>${esc(title)}</span></nav><div class="classroom-grid"><div class="classroom-main">${lessonPanel(room,index,hosts)}<p class="page-eyebrow">LESSON ${index+1} OF ${room.lessons.length}${finished?' · FINISHED ✓':''}</p><h1>${esc(lesson.title)}</h1>${canOpen(lesson,room.enrolled)&&lesson.notes?`<p class="lesson-notes">${esc(lesson.notes)}</p>`:''}${markDone}${nav}</div><aside class="classroom-lessons" aria-label="Course lessons"><h2>${esc(title)}${room.access?`<small class="classroom-access">${esc(accessSummary(room.access))}</small>`:''}</h2>${meter}<ol>${list}</ol></aside></div></section>`;
-  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=5','/classroom.css?v=8'],scripts:[HLS,{src:'/player.js?v=8'}],headers:{'x-frame-options':'DENY'},body});
+  const body=`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="${room.enrolled?'/account':'/courses/'+encodeURIComponent(room.slug)}">${room.enrolled?'My courses':'Course details'}</a> / <span>${esc(title)}</span></nav><div class="classroom-grid"><div class="classroom-main">${renewNotice(room)}${lessonPanel(room,index,hosts)}<p class="page-eyebrow">LESSON ${index+1} OF ${room.lessons.length}${finished?' · FINISHED ✓':''}</p><h1>${esc(lesson.title)}</h1>${canOpen(lesson,room.enrolled)&&lesson.notes?`<p class="lesson-notes">${esc(lesson.notes)}</p>`:''}${markDone}${nav}</div><aside class="classroom-lessons" aria-label="Course lessons"><h2>${esc(title)}${room.access?`<small class="classroom-access">${esc(accessSummary(room.access))}</small>`:''}</h2>${meter}<ol>${list}</ol></aside></div></section>`;
+  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=6','/classroom.css?v=9'],scripts:[HLS,{src:'/player.js?v=8'}],headers:{'x-frame-options':'DENY'},body});
 }

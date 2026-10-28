@@ -1,6 +1,6 @@
 import { getCatalogue, unavailablePage } from '../../lib/catalog-pages';
 import { AuthFailure, isSameOrigin } from '../../lib/student-auth';
-import { PaymentFailure, checkoutContact, createOrder, isEnrolled, purchasable, startPayment } from '../../lib/payments';
+import { PaymentFailure, checkoutContact, createOrder, enrolmentFor, mayBuy, purchasable, startPayment } from '../../lib/payments';
 import { checkoutPage, loginPage } from '../../lib/student-pages';
 import { currentStudent, failureMessage, formInput, gatewayConfig, redirect, siteOrigin, studentDb } from '../../lib/student-server';
 export const dynamic='force-dynamic';
@@ -17,8 +17,10 @@ export async function GET(request:Request){
   if(!student)return redirect('/login?next='+encodeURIComponent('/checkout?course='+slug));
   let course;
   try{course=await sellableCourse(slug);}catch(e){return e instanceof PaymentFailure?loginPage({next:'/courses',google:false,error:e.message,status:e.status}):unavailablePage();}
-  if(await isEnrolled(studentDb(),student.id,course.id))return redirect('/account?notice=enrolled');
-  return checkoutPage(student,course,gatewayConfig()?{}:{error:'Online payment is not set up yet. Contact admissions to enrol.',status:503});
+  if(!await mayBuy(studentDb(),student.id,course.id))return redirect('/account?notice=enrolled');
+  const current=await enrolmentFor(studentDb(),student.id,course.id);
+  const renewing=current?{active:current.active,expiresAt:current.expires_at}:null;
+  return checkoutPage(student,course,{renewing,...(gatewayConfig()?{}:{error:'Online payment is not set up yet. Contact admissions to enrol.',status:503})});
 }
 
 export async function POST(request:Request){
@@ -32,7 +34,7 @@ export async function POST(request:Request){
     const config=gatewayConfig();
     if(!config)throw new PaymentFailure('Online payment is not set up yet. Contact admissions to enrol.',503);
     const db=studentDb();
-    if(await isEnrolled(db,student.id,course.id))return redirect('/account?notice=enrolled');
+    if(!await mayBuy(db,student.id,course.id))return redirect('/account?notice=enrolled');
     const order=await createOrder(db,student,course,checkoutContact(student,{email,phone}));
     try{return redirect(await startPayment(config,order,student,siteOrigin(request)));}
     catch(e){await db.prepare("UPDATE orders SET status='failed',note=? WHERE id=? AND status='pending'").bind('Could not start payment',order.id).run();throw e;}

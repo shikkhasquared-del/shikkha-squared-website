@@ -173,7 +173,7 @@ test('Expired access stops counting, and paying again renews it',async()=>{
   assert.equal(await pay.isEnrolled(db,student.id,'physics-as',ends-1000),true);
   assert.equal(await pay.isEnrolled(db,student.id,'physics-as',ends+1000),false,'access ends on the end date');
   assert.equal((await pay.enrolmentsFor(db,student.id,ends+1000))[0].active,false);
-  await failsWith(pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},ends-1000),409);
+  await failsWith(pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},ends-10*864e5),409,'no buying twice while access has more than a week left');
   const later=ends+5*864e5;
   const second=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},later);
   const g2=gateway();g2.calls.tran=second.tranId;
@@ -181,4 +181,35 @@ test('Expired access stops counting, and paying again renews it',async()=>{
   const renewed=await pay.enrolmentFor(db,student.id,'physics-as',later);
   assert.equal(renewed.active,true);assert.equal(renewed.expires_at,new Date(access.addOneMonth(later)).toISOString());
   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM enrolments').get().n,1,'renewal updates the same enrolment');
+});
+
+test('In the last week, renewing adds a month from the current end date',async()=>{
+  const {db,sqlite,student}=setup();
+  addCourseRecord(sqlite,'physics-as','full');
+  const first=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0);
+  const g1=gateway();g1.calls.tran=first.tranId;
+  await pay.settleOrder(db,config,first.tranId,'VAL1',g1.fetcher,t0);
+  const ends=(await pay.enrolmentFor(db,student.id,'physics-as',t0)).expires_at;
+  const early=Date.parse(ends)-3*864e5;
+  assert.equal(await pay.mayBuy(db,student.id,'physics-as',Date.parse(ends)-8*864e5),false);
+  assert.equal(await pay.mayBuy(db,student.id,'physics-as',early),true);
+  const second=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},early);
+  const g2=gateway();g2.calls.tran=second.tranId;
+  await pay.settleOrder(db,config,second.tranId,'VAL1',g2.fetcher,early);
+  assert.equal((await pay.enrolmentFor(db,student.id,'physics-as',early)).expires_at,new Date(access.addOneMonth(Date.parse(ends))).toISOString(),'no days are lost');
+});
+
+test('Reminders start a week before monthly access ends',()=>{
+  const now=t0,day=864e5,at=d=>new Date(now+d).toISOString();
+  assert.equal(access.endingSoon({active:true,expiresAt:at(8*day)},now),false);
+  assert.equal(access.endingSoon({active:true,expiresAt:at(7*day)},now),true);
+  assert.equal(access.endingSoon({active:true,expiresAt:null},now),false,'lifetime access never ends');
+  assert.equal(access.endingSoon({active:false,expiresAt:at(-day)},now),false,'ended access shows Renew instead');
+  assert.equal(access.endingSoon(null,now),false);
+  assert.match(access.endingNotice({active:true,expiresAt:at(3*day)},now),/^Your access ends in 3 days, on /);
+  assert.match(access.endingNotice({active:true,expiresAt:at(day/2)},now),/^Your access ends tomorrow/,'16:00 + 12 hours is tomorrow in Dhaka');
+  assert.match(access.endingNotice({active:true,expiresAt:at(3*3600e3)},now),/^Your access ends today/);
+  assert.equal(access.canBuy({active:true,expiresAt:at(20*day)},now),false);
+  assert.equal(access.canBuy({active:true,expiresAt:at(2*day)},now),true);
+  assert.equal(access.canBuy({active:true,expiresAt:null},now),false);
 });

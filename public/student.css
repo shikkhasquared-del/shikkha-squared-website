@@ -41,3 +41,5 @@
 .checkout-total small{display:block;margin-top:4px;font-size:12px;color:var(--page-muted)}
 .auth-courses .classroom-meter{display:block;height:5px;margin-top:10px;border-radius:99px;background:#ffffff14;overflow:hidden}
 .auth-courses .classroom-meter i{display:block;height:100%;background:#ff791a;border-radius:inherit}
+.auth-message.renew{border-color:#ff791a66;background:#ff791a14;color:#ffd2b0}
+.auth-message.renew a{color:#ffa366;font-weight:600}

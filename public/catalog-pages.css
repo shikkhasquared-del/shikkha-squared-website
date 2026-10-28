@@ -10,3 +10,4 @@
 
 .section-hero-media{width:340px;flex-shrink:0;border:1px solid #ffffff1a;border-radius:20px;overflow:hidden;transform:perspective(900px) rotateY(-9deg);box-shadow:0 30px 70px #0006;background:#191a21}.section-hero-media img{width:100%;height:auto;max-height:300px;object-fit:contain}@media(max-width:800px){.section-hero-media{width:230px}}@media(max-width:540px){.section-hero-media{display:none}}
 .enrolment-access{font-size:13px;color:#ffb580;margin:4px 0 10px}
+.enrolment-renew{font-size:14px;color:#ffd2b0;margin:0 0 12px}
