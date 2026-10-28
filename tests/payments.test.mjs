@@ -8,11 +8,12 @@ import { DatabaseSync } from 'node:sqlite';
 
 const output=path.resolve('.test-output/payments'),outputUrl=pathToFileURL(output).href;
 await fs.mkdir(output,{recursive:true});
-for(const name of ['student-auth','payments','access']){
+for(const name of ['student-auth','payments','access','discounts']){
   const source=await fs.readFile('lib/'+name+'.ts','utf8');
-  await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace("from './student-auth'","from './student-auth.mjs'").replace("from './access'","from './access.mjs'"));
+  await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace("from './student-auth'","from './student-auth.mjs'").replace("from './access'","from './access.mjs'").replaceAll("from './payments'","from './payments.mjs'"));
 }
 const pay=await import(outputUrl+'/payments.mjs');
+const disc=await import(outputUrl+'/discounts.mjs');
 const sql=(await Promise.all((await fs.readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort().map(f=>fs.readFile('drizzle/'+f,'utf8')))).join('\n');
 // The admin's ledger tables live in the same database in production.
 const adminTables=`CREATE TABLE records(id text PRIMARY KEY,kind text NOT NULL,title text NOT NULL,status text NOT NULL,data text NOT NULL,unique_key text,version integer NOT NULL DEFAULT 1,created_at text NOT NULL,updated_at text NOT NULL,archived_at text);
@@ -212,4 +213,29 @@ test('Reminders start a week before monthly access ends',()=>{
   assert.equal(access.canBuy({active:true,expiresAt:at(20*day)},now),false);
   assert.equal(access.canBuy({active:true,expiresAt:at(2*day)},now),true);
   assert.equal(access.canBuy({active:true,expiresAt:null},now),false);
+});
+
+test('Discount codes lower the price, are checked against course, dates and uses, and count a use when paid',async()=>{
+  const {db,sqlite,student}=setup();
+  addCourseRecord(sqlite,'physics-as','full');
+  const code=(c,percent,extra={})=>sqlite.prepare('INSERT INTO discount_codes(code,percent,course_slug,starts_at,ends_at,max_uses,uses,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(c,percent,extra.course??null,extra.starts??null,extra.ends??null,extra.max??null,extra.uses??0,extra.active??1,'x','x');
+  code('EID20',20);code('CHEM10',10,{course:'chemistry'});code('LATER',10,{starts:'2026-11-01T00:00:00Z'});code('OLD',10,{ends:'2026-10-01T00:00:00Z'});code('FULL',10,{max:5,uses:5});code('OFF',10,{active:0});
+  const failsMsg=(input,pattern)=>assert.rejects(disc.findDiscount(db,input,'physics-as',t0),e=>e instanceof pay.PaymentFailure&&pattern.test(e.message));
+  assert.equal((await disc.findDiscount(db,' eid20 ','physics-as',t0)).percent,20,'codes ignore case and spaces');
+  await failsMsg('NOPE',/isn’t valid/);await failsMsg('OFF',/isn’t valid/);await failsMsg('CHEM10',/isn’t for this course/);
+  await failsMsg('LATER',/isn’t active yet/);await failsMsg('OLD',/expired/);await failsMsg('FULL',/fully used/);await failsMsg('<script>',/isn’t valid/);
+  assert.equal(pay.discountedPrice(449900,20),359900);
+  assert.equal(pay.discountedPrice(449900,15),382400,'rounded to whole taka');
+  assert.equal(pay.discountedPrice(1200,90),pay.MIN_PRICE_MINOR,'never below the gateway minimum');
+  const discount=await disc.findDiscount(db,'EID20','physics-as',t0);
+  const order=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0,discount);
+  assert.deepEqual([order.amountMinor,order.discountCode,order.listPriceMinor],[359900,'EID20',449900]);
+  const g=gateway({amount:'3599.00'});g.calls.tran=order.tranId;
+  await pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0);
+  assert.equal(sqlite.prepare("SELECT uses FROM discount_codes WHERE code='EID20'").get().uses,1);
+  await pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0);
+  assert.equal(sqlite.prepare("SELECT uses FROM discount_codes WHERE code='EID20'").get().uses,1,'a repeated confirmation is not a second use');
+  assert.match(sqlite.prepare("SELECT data FROM records WHERE kind='payment'").get().data,/code EID20/);
+  const plain=await pay.createOrder(db,{...student,id:'stu-2'},course,{email:'a@b.co',phone:'+8801712345678'},t0);
+  assert.deepEqual([plain.amountMinor,plain.discountCode],[449900,null]);
 });

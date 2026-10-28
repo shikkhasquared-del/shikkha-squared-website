@@ -7,7 +7,7 @@ import { canBuy, renewedEndsAt } from './access';
 
 export class PaymentFailure extends Error {status:number;constructor(message:string,status=400){super(message);this.status=status;}}
 export type GatewayConfig={storeId:string;storePassword:string;live:boolean};
-export type Order={id:string;tranId:string;studentId:string;courseSlug:string;courseTitle:string;amountMinor:number;currency:string;email:string;phone:string;status:string;note:string|null;createdAt:string;paidAt:string|null};
+export type Order={id:string;tranId:string;studentId:string;courseSlug:string;courseTitle:string;amountMinor:number;currency:string;email:string;phone:string;status:string;note:string|null;createdAt:string;paidAt:string|null;discountCode:string|null;listPriceMinor:number|null};
 type Fetcher=(url:string,init?:RequestInit)=>Promise<Response>;
 
 export const MIN_PRICE_MINOR=1000; // SSLCommerz accepts BDT 10.00 to 500,000.00
@@ -15,10 +15,12 @@ export const MAX_PRICE_MINOR=50000000;
 export const gatewayHost=(config:GatewayConfig)=>config.live?'https://securepay.sslcommerz.com':'https://sandbox.sslcommerz.com';
 export const purchasable=(course:any)=>!!course&&course.checkout===true&&Number.isInteger(course.priceMinor)&&course.priceMinor>=MIN_PRICE_MINOR&&course.priceMinor<=MAX_PRICE_MINOR;
 export const taka=(minor:number)=>'৳'+new Intl.NumberFormat('en-BD',{maximumFractionDigits:2}).format(minor/100);
+// A discounted fee, rounded to whole taka and never below what SSLCommerz accepts.
+export const discountedPrice=(priceMinor:number,percent:number)=>Math.max(MIN_PRICE_MINOR,Math.round(priceMinor*(100-percent)/100/100)*100);
 const iso=(ms:number)=>new Date(ms).toISOString();
 const dhakaDate=(ms:number)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(ms);
 
-export function rowToOrder(r:any):Order {return {id:r.id,tranId:r.tran_id,studentId:r.student_id,courseSlug:r.course_slug,courseTitle:r.course_title,amountMinor:r.amount_minor,currency:r.currency,email:r.email,phone:r.phone,status:r.status,note:r.note,createdAt:r.created_at,paidAt:r.paid_at};}
+export function rowToOrder(r:any):Order {return {id:r.id,tranId:r.tran_id,studentId:r.student_id,courseSlug:r.course_slug,courseTitle:r.course_title,amountMinor:r.amount_minor,currency:r.currency,email:r.email,phone:r.phone,status:r.status,note:r.note,createdAt:r.created_at,paidAt:r.paid_at,discountCode:r.discount_code??null,listPriceMinor:r.list_price_minor??null};}
 export async function orderById(db:D1Database,id:string){const r=await db.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();return r?rowToOrder(r):null;}
 export async function orderByTranId(db:D1Database,tranId:string){const r=await db.prepare('SELECT * FROM orders WHERE tran_id=?').bind(tranId).first();return r?rowToOrder(r):null;}
 export type Enrolment={course_slug:string;course_title:string;created_at:string;expires_at:string|null;active:boolean};
@@ -38,13 +40,15 @@ export function checkoutContact(student:Student,form:{email?:string;phone?:strin
   return {email,phone};
 }
 
-export async function createOrder(db:D1Database,student:Student,course:any,contact:{email:string;phone:string},now=Date.now()):Promise<Order>{
+// `discount` is a code already checked with findDiscount (lib/discounts.ts).
+export async function createOrder(db:D1Database,student:Student,course:any,contact:{email:string;phone:string},now=Date.now(),discount:{code:string;percent:number}|null=null):Promise<Order>{
   if(!purchasable(course))throw new PaymentFailure('This course is not available to buy online. Contact admissions to enrol.',409);
   if(!await mayBuy(db,student.id,course.id,now))throw new PaymentFailure('You are already enrolled in this course.',409);
   const id=crypto.randomUUID();
   const tranId=('SS'+now.toString(36)+crypto.randomUUID().replace(/-/g,'').slice(0,10)).toUpperCase();
-  await db.prepare('INSERT INTO orders(id,tran_id,student_id,course_slug,course_title,amount_minor,currency,email,phone,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(id,tranId,student.id,course.id,String(course.title).slice(0,255),course.priceMinor,'BDT',contact.email,contact.phone,'pending',iso(now),iso(now)).run();
+  const amount=discount?discountedPrice(course.priceMinor,discount.percent):course.priceMinor;
+  await db.prepare('INSERT INTO orders(id,tran_id,student_id,course_slug,course_title,amount_minor,currency,email,phone,status,created_at,updated_at,discount_code,list_price_minor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(id,tranId,student.id,course.id,String(course.title).slice(0,255),amount,'BDT',contact.email,contact.phone,'pending',iso(now),iso(now),discount?.code??null,discount?course.priceMinor:null).run();
   return (await orderById(db,id))!;
 }
 
@@ -71,7 +75,7 @@ async function validate(config:GatewayConfig,valId:string,fetcher:Fetcher){
 }
 
 async function recordInAdminLedger(db:D1Database,order:Order,student:Student|null,details:{bankTranId:string;cardType:string},now:number){
-  const data={title:(student?.name||order.email).slice(0,160),reference:order.tranId,email:order.email,course:order.courseTitle.slice(0,160),amountMinor:order.amountMinor,method:'sslcommerz',date:dhakaDate(now),note:`Online payment${details.cardType?' · '+details.cardType:''}${details.bankTranId?' · bank ref '+details.bankTranId:''}`.slice(0,2000),source:'gateway'};
+  const data={title:(student?.name||order.email).slice(0,160),reference:order.tranId,email:order.email,course:order.courseTitle.slice(0,160),amountMinor:order.amountMinor,method:'sslcommerz',date:dhakaDate(now),note:`Online payment${order.discountCode?' · code '+order.discountCode:''}${details.cardType?' · '+details.cardType:''}${details.bankTranId?' · bank ref '+details.bankTranId:''}`.slice(0,2000),source:'gateway'};
   const id=crypto.randomUUID();
   await db.prepare('INSERT OR IGNORE INTO records(id,kind,title,status,data,unique_key,version,created_at,updated_at) VALUES(?,?,?,?,?,?,1,?,?)').bind(id,'payment',data.title,'paid',JSON.stringify(data),'sslcommerz:'+order.tranId.toLowerCase(),iso(now),iso(now)).run();
   await db.prepare('INSERT INTO audit_events(id,entity_id,action,summary,actor,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),id,'online payment',data.title+' · '+order.courseTitle,'website-checkout',iso(now)).run();
@@ -106,6 +110,7 @@ export async function settleOrder(db:D1Database,config:GatewayConfig,tranId:stri
       ON CONFLICT(student_id,course_slug) DO UPDATE SET source=excluded.source,order_id=excluded.order_id,course_title=excluded.course_title,
       expires_at=CASE WHEN enrolments.expires_at IS NULL OR excluded.expires_at IS NULL THEN NULL ELSE max(enrolments.expires_at,excluded.expires_at) END`)
       .bind(crypto.randomUUID(),order.studentId,order.courseSlug,order.courseTitle,'payment',order.id,iso(now),renewedEndsAt(course?.format,current?.expires_at,now)).run();
+    if(order.discountCode)await db.prepare('UPDATE discount_codes SET uses=uses+1,updated_at=? WHERE code=?').bind(iso(now),order.discountCode).run();
     const student=await db.prepare('SELECT name FROM students WHERE id=?').bind(order.studentId).first<{name:string}>();
     await recordInAdminLedger(db,order,student?{name:student.name} as Student:null,details,now);
   }

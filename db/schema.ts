@@ -23,6 +23,8 @@ export const orders = sqliteTable('orders', {
   courseSlug: text('course_slug').notNull(), courseTitle: text('course_title').notNull(), amountMinor: integer('amount_minor').notNull(),
   currency: text('currency').notNull(), email: text('email').notNull(), phone: text('phone').notNull(), status: text('status').notNull(), valId: text('val_id'), bankTranId: text('bank_tran_id'),
   cardType: text('card_type'), note: text('note'), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(), paidAt: text('paid_at'),
+  // When a discount code was used: the code, and the course price before the discount.
+  discountCode: text('discount_code'), listPriceMinor: integer('list_price_minor'),
 }, table => [index('orders_student').on(table.studentId, table.createdAt)]);
 // Which student can open which course. One row per student and course.
 export const enrolments = sqliteTable('enrolments', {
@@ -42,4 +44,12 @@ export const lessonProgress = sqliteTable('lesson_progress', {
 // Cloudflare R2, which bills past 10 million a month, so the site stops serving files at a much lower cap.
 export const fileDownloads = sqliteTable('file_downloads', {
   month: text('month').primaryKey(), count: integer('count').notNull().default(0),
+});
+// Discount codes the admin creates. A percentage off one course or every course, optionally limited by dates
+// and number of uses. Uses are counted when a payment succeeds.
+export const discountCodes = sqliteTable('discount_codes', {
+  code: text('code').primaryKey(), percent: integer('percent').notNull(), courseSlug: text('course_slug'),
+  startsAt: text('starts_at'), endsAt: text('ends_at'), maxUses: integer('max_uses'), uses: integer('uses').notNull().default(0),
+  active: integer('active').notNull().default(1), note: text('note').notNull().default(''),
+  createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
 });

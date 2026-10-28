@@ -47,3 +47,12 @@
 .install-app strong{display:block;margin-bottom:4px}
 .install-app p{margin:0 0 10px}
 .install-app .install-ios{margin:0}
+.checkout-total s{font-size:15px;font-weight:400;color:var(--page-muted);margin-right:6px}
+.discount-form{margin:0 0 18px}
+.discount-form label{display:block;font-size:13px;margin-bottom:6px;color:var(--page-muted)}
+.discount-form div{display:flex;gap:8px}
+.discount-form input{flex:1;min-width:0;text-transform:uppercase}
+.discount-form .page-button{flex:none}
+.discount-form .auth-message{margin-top:8px}
+.checkout-discount{margin:0 0 18px;padding:10px 12px;border:1px solid #2fbf7155;border-radius:10px;background:#2fbf7114;color:#a6ecc4;font-size:14px}
+.checkout-discount a{color:#ffa366;margin-left:4px}
