@@ -21,7 +21,8 @@ const localBindingConfig = {
       database_id: "00000000-0000-4000-8000-000000000000",
     },
   ],
-  r2_buckets: [],
+  // Same local bucket as the admin, so worksheets uploaded in the local admin open here.
+  r2_buckets: [{ binding: "BUCKET", bucket_name: "site-creator-r2" }],
 };
 
 export default defineConfig(async ({ command }) => {

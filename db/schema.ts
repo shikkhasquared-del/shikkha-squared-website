@@ -38,3 +38,8 @@ export const lessonProgress = sqliteTable('lesson_progress', {
   positionS: integer('position_s').notNull().default(0), durationS: integer('duration_s').notNull().default(0),
   completedAt: text('completed_at'), updatedAt: text('updated_at').notNull(),
 }, table => [uniqueIndex('lesson_progress_student_lesson').on(table.studentId, table.courseSlug, table.lessonId), index('lesson_progress_student_recent').on(table.studentId, table.courseSlug, table.updatedAt)]);
+// How many uploaded files (worksheets, images) the site has served each month. Each one is a read from
+// Cloudflare R2, which bills past 10 million a month, so the site stops serving files at a much lower cap.
+export const fileDownloads = sqliteTable('file_downloads', {
+  month: text('month').primaryKey(), count: integer('count').notNull().default(0),
+});

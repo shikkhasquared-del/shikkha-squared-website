@@ -1,5 +1,6 @@
 import { esc, shell, type Catalogue } from './catalog-pages';
 import { canOpen, videoSource } from './lessons';
+import { lessonFileId } from './files';
 import { purchasable, taka } from './payments';
 import { accessDate, accessSummary, endingNotice, endingSoon } from './access';
 import { displayPhone, type Student } from './student-auth';
@@ -43,6 +44,7 @@ function lessonPanel(room:Classroom,index:number,hosts:string[]){
     const resume=start?`<p class="lesson-resume" role="status">Picking up where you left off, at ${clock(start)}. <button type="button" class="lesson-restart">Start over</button></p>`:'';
     return `<div class="lesson-player"${room.student?` data-mark="${esc(watermark(room.student))}"`:''}><video id="lesson-video" controls playsinline preload="metadata" controlsList="nodownload" data-src="${esc(src)}"${tracking}></video><p class="lesson-player-error" role="alert" hidden></p></div>${resume}`;
   }
+  if(lessonFileId(lesson.resourceUrl))return `<div class="lesson-locked open"><strong>${esc(kinds[lesson.kind]||'Worksheet')}</strong><p>Your worksheet opens in a new tab, where you can read, print or save it.</p><a class="page-button" href="/learn/${room.slug}/file/${index}" target="_blank" rel="noopener">Open worksheet</a></div>`;
   if(lesson.resourceUrl)return `<div class="lesson-locked open"><strong>${esc(kinds[lesson.kind]||'Lesson resource')}</strong><p>This lesson opens in a new tab.</p><a class="page-button" href="${esc(lesson.resourceUrl)}" target="_blank" rel="noopener noreferrer">Open lesson</a></div>`;
   return `<div class="lesson-locked open"><strong>Coming soon.</strong><p>This lesson's material hasn't been added yet.</p></div>`;
 }

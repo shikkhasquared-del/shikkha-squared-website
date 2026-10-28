@@ -80,6 +80,7 @@ Plain settings live in `deploy/cloudflare.json`. Secrets are set with `wrangler 
 | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_LIVE` | settings | Payment gateway store, and sandbox or live mode |
 | `SSLCOMMERZ_STORE_PASSWORD` | secret | Payment gateway |
 | `TENBYTE_REFERRER` | secret | Private referrer host name that Tenbyte's access rule allows; the site sends it (bare, or as https://host/ where a Tenbyte location wants that) when fetching lesson videos |
+| `BUCKET` | R2 binding | Private bucket `shikkha-media`, shared with the admin, for lesson worksheets. Files served are counted in `file_downloads` and stop at 3 million a month (`lib/files.ts`) to stay inside R2's free allowance |
 | `TENBYTE_HOSTS` | setting | Optional: video hosts other than `*.tenbytecdn.com` |
 
 ## More documentation

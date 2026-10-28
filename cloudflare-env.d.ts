@@ -18,5 +18,6 @@ declare namespace Cloudflare {
     // Protected lesson videos (Tenbyte CDN token authentication).
     TENBYTE_REFERRER?: string;
     TENBYTE_HOSTS?: string;
+    BUCKET?: R2Bucket;
   }
 }

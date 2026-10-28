@@ -29,6 +29,13 @@
       "when": 1793184597491,
       "tag": "0003_lesson_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793186833968,
+      "tag": "0004_file_downloads",
+      "breakpoints": true
     }
   ]
 }
