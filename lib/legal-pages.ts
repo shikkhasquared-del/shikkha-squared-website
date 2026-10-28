@@ -49,7 +49,7 @@ export function privacyPage(data:Catalogue){
 <li><strong>Google sign-in cookie</strong> (<code>ss_oauth</code>): used for up to 10 minutes while you sign in with Google.</li>
 <li><strong>Saved courses and motion setting</strong>: the homepage remembers the courses you bookmark and whether you turned animations off, in your browser's local storage. This stays on your device and is not sent to us.</li>
 </ul>
-<p>We do not use advertising cookies, and we do not use analytics or tracking tools that follow you across other websites.</p>
+<p>We do not use advertising cookies, and we do not use tracking tools that follow you across other websites. To understand how the website is used (for example, how many people visit and which pages are popular), we use Cloudflare Web Analytics. It uses no cookies, does not identify you, and does not follow you to other websites; we only see totals.</p>
 
 <h2>2. How we use your information</h2>
 <ul>
@@ -64,7 +64,7 @@ export function privacyPage(data:Catalogue){
 <h2>3. Who we share it with</h2>
 <p>We use trusted service providers who process information on our behalf, only as needed to run the website:</p>
 <ul>
-<li><strong>Cloudflare</strong>: hosts this website and its database.</li>
+<li><strong>Cloudflare</strong>: hosts this website, its database and uploaded files, and counts visits without cookies (Web Analytics).</li>
 <li><strong>Google</strong>: provides "Continue with Google" sign-in, if you choose it.</li>
 <li><strong>SSLCommerz</strong>: processes course payments.</li>
 <li><strong>Tenbyte</strong>: stores and delivers lesson videos.</li>

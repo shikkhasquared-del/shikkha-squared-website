@@ -81,6 +81,7 @@ Plain settings live in `deploy/cloudflare.json`. Secrets are set with `wrangler 
 | `SSLCOMMERZ_STORE_PASSWORD` | secret | Payment gateway |
 | `TENBYTE_REFERRER` | secret | Private referrer host name that Tenbyte's access rule allows; the site sends it (bare, or as https://host/ where a Tenbyte location wants that) when fetching lesson videos |
 | `BUCKET` | R2 binding | Private bucket `shikkha-media`, shared with the admin, for lesson worksheets. Files served are counted in `file_downloads` and stop at 3 million a month (`lib/files.ts`) to stay inside R2's free allowance |
+| `ANALYTICS_TOKEN` | setting | Cloudflare Web Analytics site token (public, cookieless). Its stats are under Analytics → Web analytics in the Cloudflare dashboard |
 | `SEARCH_INDEXING` | setting | "on" lets search engines list the public pages (robots.txt, sitemap.xml, no noindex tag). Leave unset on the temporary workers.dev address; set it when shikkhasquared.com points here |
 | `TENBYTE_HOSTS` | setting | Optional: video hosts other than `*.tenbytecdn.com` |
 
