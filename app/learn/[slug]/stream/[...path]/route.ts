@@ -1,5 +1,6 @@
 import { fetchFromTenbyte, loadClassroom, tenbyteHosts } from '../../../../../lib/classroom';
 import { canOpen, isPlaylist, mediaPath, rewritePlaylist, videoSource } from '../../../../../lib/lessons';
+import { noteActivity } from '../../../../../lib/student-server';
 export const dynamic='force-dynamic';
 
 const deny=(status:number,message:string)=>new Response(message,{status,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
@@ -25,6 +26,8 @@ export async function GET(request:Request){
     const upstream=await fetchFromTenbyte(source.origin+path,headers,isPlaylist(path)?10000:30000);
     if(!upstream.ok){console.error('Video origin refused',upstream.status,source.origin,path);return deny(502,'The video is temporarily unavailable.');}
     if(isPlaylist(path)){
+      // The main playlist is fetched once each time a student starts a lesson video.
+      if(path===source.masterPath&&room.student)await noteActivity(request,room.student.id,'watch');
       const body=rewritePlaylist(await upstream.text(),path,source,`/learn/${slug}/stream/${number}/`);
       return new Response(body,{headers:{'content-type':'application/vnd.apple.mpegurl','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
     }

@@ -43,6 +43,13 @@
       "when": 1793187717789,
       "tag": "0005_discount_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793188277776,
+      "tag": "0006_account_activity",
+      "breakpoints": true
     }
   ]
 }

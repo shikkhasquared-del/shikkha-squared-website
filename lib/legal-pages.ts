@@ -40,6 +40,8 @@ export function privacyPage(data:Catalogue){
 <ul>
 <li>Which courses you are enrolled in and how you got access (online payment, or added by our team, for example after a cash payment or a scholarship).</li>
 <li>When you watch a lesson, your browser requests the video through this website and our video delivery network. Like any website, these services see your IP address and browser type when you connect. While you watch, the player shows your name and mobile number or email on top of the video, to discourage copying; this is shown only on your own screen.</li>
+<li>Which lessons you have finished and where you stopped in each video, so you can carry on where you left off.</li>
+<li>To protect your account and our courses from sharing, we note each time you sign in or start a lesson video: the date and time, your approximate city and country (as reported by our hosting provider), the type of device (for example "iPhone" or "Windows") and a scrambled, one-way code made from your network address. We never store the address itself. Our team uses this only to spot accounts that seem to be shared.</li>
 </ul>
 <h3>Stored on your own device</h3>
 <ul>
@@ -75,6 +77,7 @@ export function privacyPage(data:Catalogue){
 <ul>
 <li>Sign-in codes and the related network addresses: 24 hours.</li>
 <li>Sign-in sessions: up to 30 days, or until you sign out.</li>
+<li>Sign-in and lesson-start records used to spot account sharing: 90 days.</li>
 <li>Your account and course access: for as long as you have an account.</li>
 <li>Payment records: for as long as accounting and tax laws require, even if you close your account.</li>
 </ul>

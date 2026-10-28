@@ -53,3 +53,11 @@ export const discountCodes = sqliteTable('discount_codes', {
   active: integer('active').notNull().default(1), note: text('note').notNull().default(''),
   createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
 });
+// Sign-ins and lesson-video starts, to spot accounts shared between people. Only an approximate place
+// (city and country from Cloudflare) and a scrambled, one-way code for the network address are kept,
+// never the address itself. Rows older than 90 days are deleted.
+export const accountActivity = sqliteTable('account_activity', {
+  id: text('id').primaryKey(), studentId: text('student_id').notNull(), kind: text('kind').notNull(),
+  network: text('network').notNull(), city: text('city').notNull().default(''), country: text('country').notNull().default(''),
+  device: text('device').notNull().default(''), createdAt: text('created_at').notNull(),
+}, table => [index('account_activity_student').on(table.studentId, table.createdAt), index('account_activity_time').on(table.createdAt)]);

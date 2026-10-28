@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { AuthFailure, SESSION_COOKIE, SESSION_TTL_MS, cookie, createSession, readCookie, sessionStudent } from './student-auth';
 import type { GoogleConfig } from './google-auth';
 import { PaymentFailure, enrolmentFor, type GatewayConfig } from './payments';
+import { recordActivity } from './activity';
 
 // Worker-side glue for student accounts: bindings, configuration and responses.
 export function studentDb(){if(!env.DB)throw new AuthFailure('Student accounts are unavailable right now.',503);return env.DB;}
@@ -23,8 +24,18 @@ export function redirect(location:string,cookies:string[]=[]){
   for(const c of cookies)headers.append('set-cookie',c);
   return new Response(null,{status:303,headers});
 }
+// Where a request comes from, as Cloudflare reports it (approximate city and country).
+export function requestPlace(request:Request){
+  const cf=(request as any).cf||{};
+  return {ip:clientIp(request),city:String(cf.city||''),country:String(cf.country||request.headers.get('cf-ipcountry')||''),userAgent:request.headers.get('user-agent')||''};
+}
+// Notes account activity for sharing alerts. Never blocks what the student is doing.
+export async function noteActivity(request:Request,studentId:string,kind:'sign-in'|'watch'){
+  try{await recordActivity(studentDb(),studentId,kind,requestPlace(request),otpPepper()||'shikkha');}catch(e){console.error('Could not record activity',e instanceof Error?e.message:'');}
+}
 export async function signedIn(request:Request,studentId:string,next:string,extraCookies:string[]=[]){
   const token=await createSession(studentDb(),studentId,Date.now(),readCookie(request,SESSION_COOKIE));
+  await noteActivity(request,studentId,'sign-in');
   return redirect(next,[...extraCookies,cookie(request,SESSION_COOKIE,token,{maxAge:SESSION_TTL_MS/1000})]);
 }
 export async function formInput(request:Request){
