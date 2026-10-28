@@ -1,4 +1,4 @@
-import { loadClassroom, tenbyteHosts, tenbyteReferrer } from '../../../../../lib/classroom';
+import { fetchFromTenbyte, loadClassroom, tenbyteHosts } from '../../../../../lib/classroom';
 import { canOpen, isPlaylist, mediaPath, rewritePlaylist, videoSource } from '../../../../../lib/lessons';
 export const dynamic='force-dynamic';
 
@@ -20,11 +20,9 @@ export async function GET(request:Request){
     const path=source&&mediaPath(source,relative);
     if(!source||!path)return deny(404,'Not found.');
     const headers=new Headers();
-    const referrer=tenbyteReferrer();
-    if(referrer)headers.set('referer',referrer);
     const range=request.headers.get('range');
     if(range)headers.set('range',range);
-    const upstream=await fetch(source.origin+path,{headers,signal:AbortSignal.timeout(isPlaylist(path)?10000:30000)});
+    const upstream=await fetchFromTenbyte(source.origin+path,headers,isPlaylist(path)?10000:30000);
     if(!upstream.ok){console.error('Video origin refused',upstream.status,source.origin,path);return deny(502,'The video is temporarily unavailable.');}
     if(isPlaylist(path)){
       const body=rewritePlaylist(await upstream.text(),path,source,`/learn/${slug}/stream/${number}/`);

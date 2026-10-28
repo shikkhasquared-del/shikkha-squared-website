@@ -24,6 +24,24 @@ export async function loadClassroom(request:Request,slug:string,{withProgress=fa
   return {slug,course,published,lessons:courseLessons(course),student,enrolled,access,progress};
 }
 
-// The private referrer Tenbyte's access rule allows (a bare host name: Tenbyte compares the header as written).
+// The private referrer Tenbyte's access rule allows (a host name).
 export const tenbyteReferrer=()=>env.TENBYTE_REFERRER||undefined;
+
+// Tenbyte's locations disagree on how the referrer must be written: some accept only the bare host name, others
+// only a full address. Use the form that last worked here, and on a refusal try the other one.
+let referrerForm=0;
+export async function fetchFromTenbyte(url:string,headers:Headers,timeoutMs:number){
+  const host=tenbyteReferrer();
+  if(!host)return fetch(url,{headers,signal:AbortSignal.timeout(timeoutMs)});
+  const forms=[host,`https://${host}/`];
+  let response!:Response;
+  for(let attempt=0;attempt<forms.length;attempt++){
+    const form=(referrerForm+attempt)%forms.length;
+    headers.set('referer',forms[form]);
+    response=await fetch(url,{headers,signal:AbortSignal.timeout(timeoutMs)});
+    if(response.status!==403){referrerForm=form;return response;}
+    if(attempt<forms.length-1)await response.body?.cancel();
+  }
+  return response;
+}
 export const tenbyteHosts=()=>(env.TENBYTE_HOSTS||'.tenbytecdn.com').split(',').map(h=>h.trim().toLowerCase()).filter(Boolean);
