@@ -6,7 +6,8 @@ import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
 const output=path.resolve('.test-output/pages'),outputUrl=pathToFileURL(output).href;await fs.mkdir(output,{recursive:true});
 await fs.writeFile(output+'/student-server.mjs','export async function viewerAccess(){return null;}');
-for(const name of ['catalog-pages','course-taxonomy','route-slug','access']){let source=await fs.readFile('lib/'+name+'.ts','utf8');if(name==='catalog-pages')source=source.replace("import { readCMS } from './cms-read';",'const readCMS=async()=>{throw new Error("Not used by rendering tests");};');await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './course-taxonomy'","from './course-taxonomy.mjs'").replace("from './access'","from './access.mjs'"));}
+await fs.writeFile(output+'/site.mjs',"export const siteOrigin=()=>'https://site.test';export const indexingAllowed=()=>globalThis.__indexing===true;");
+for(const name of ['catalog-pages','course-taxonomy','route-slug','access']){let source=await fs.readFile('lib/'+name+'.ts','utf8');if(name==='catalog-pages')source=source.replace("import { readCMS } from './cms-read';",'const readCMS=async()=>{throw new Error("Not used by rendering tests");};');await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './course-taxonomy'","from './course-taxonomy.mjs'").replace("from './access'","from './access.mjs'").replace("from './site'","from './site.mjs'"));}
 const {coursesPage,instructorsPage,coursePage,instructorPage,sectionPage}=await import(outputUrl+'/catalog-pages.mjs');
 const section={id:'cambridge-as',title:'Cambridge AS',description:'AS courses',mode:'rules',board:'cambridge',level:'as',format:'all'};
 const person={id:'bappi-sir',title:'Bappi Sir',subjects:'Physics',designation:'Instructor',bio:'Teaching Physics.',photoUrl:'',aliases:''};
@@ -22,3 +23,22 @@ test('Each course section has its own address and rejects unknown sections',asyn
 
 test('Detail slugs reject malformed encoding, injected separators, and excessive length',async()=>{const {routeSlug}=await import(outputUrl+'/route-slug.mjs');assert.equal(routeSlug(new Request('https://site.test/courses/physics-as/')),'physics-as');assert.equal(routeSlug(new Request('https://site.test/courses/%70hysics-as')),'physics-as');for(const slug of ['%E0%A4%A','%2F','%3Cscript%3E','a'.repeat(101)])assert.equal(routeSlug(new Request('https://site.test/courses/'+slug)),null);});
 test('Actual detail routes return 404 for malformed slugs without calling the catalogue backend',async()=>{for(const [name,file,url] of [['course-route','app/courses/[slug]/route.ts','/courses/'],['section-route','app/courses/category/[slug]/route.ts','/courses/category/'],['instructor-route','app/instructors/[slug]/route.ts','/instructors/']]){const compiled=ts.transpileModule(await fs.readFile(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replace(/from ['"](?:\.\.\/)+lib\/([^'"]+)['"]/g,(_,module)=>'from "./'+module+'.mjs"');await fs.writeFile(output+'/'+name+'.mjs',compiled);const {GET}=await import(outputUrl+'/'+name+'.mjs');assert.equal((await GET(new Request('https://site.test'+url+'%E0%A4%A'))).status,404);assert.equal((await GET(new Request('https://site.test'+url+'%2F'))).status,404);}});
+
+test('Public pages carry their address, link-preview tags and course details, and stay unlisted until listing is switched on',async()=>{
+  const html=await coursePage(data,'physics-as').text();
+  assert.match(html,/<link rel="canonical" href="https:\/\/site\.test\/courses\/physics-as">/);
+  assert.match(html,/<meta property="og:title" content="Physics AS \| Shikkha Squared">/);
+  assert.ok(html.includes('<meta property="og:description" content="Physics course.">'),'the preview text is the course description, unchanged');
+  assert.match(html,/<meta name="robots" content="noindex, nofollow">/,'unlisted by default');
+  const details=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
+  assert.deepEqual([details['@type'],details.name,details.offers.price,details.offers.priceCurrency,details.instructor.name],['Course','Physics AS','4499.00','BDT','Bappi Sir']);
+  globalThis.__indexing=true;
+  try{
+    const listed=await coursePage(data,'physics-as').text();
+    assert.equal(listed.includes('noindex'),false);
+    const missing=await coursePage(data,'missing').text();
+    assert.match(missing,/noindex/,'pages without their own address are never listed');
+  }finally{globalThis.__indexing=false;}
+  const attack=structuredClone(data);attack.courses[0].title='</script><script>alert(1)</script>';
+  assert.equal((await coursePage(attack,'physics-as').text()).includes('</script><script>alert(1)'),false,'course details cannot break out of the page');
+});

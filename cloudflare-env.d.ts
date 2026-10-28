@@ -11,6 +11,8 @@ declare namespace Cloudflare {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     PUBLIC_ORIGIN?: string;
+    // "on" lets search engines list the site; leave unset on the temporary workers.dev address.
+    SEARCH_INDEXING?: string;
     // Course payments (SSLCommerz). SSLCOMMERZ_LIVE="true" uses the live gateway; otherwise the sandbox.
     SSLCOMMERZ_STORE_ID?: string;
     SSLCOMMERZ_STORE_PASSWORD?: string;
