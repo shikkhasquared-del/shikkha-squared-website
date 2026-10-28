@@ -39,3 +39,13 @@
 .lesson-player.filled .lesson-fullscreen{top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left))}
 html.lesson-filled,html.lesson-filled body{overflow:hidden}
 .lesson-watermark a{color:inherit;text-decoration:none;pointer-events:none}
+/* Progress */
+.classroom-progress{display:flex;flex-direction:column;gap:8px;padding:12px 18px 14px;border-bottom:1px solid var(--page-line);font-size:12px;color:var(--page-muted)}
+.classroom-meter{display:block;height:6px;border-radius:99px;background:#ffffff14;overflow:hidden}
+.classroom-meter i{display:block;height:100%;background:#ff791a;border-radius:inherit}
+.lesson-check{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#2fbf71;color:#08130c;font-size:11px;font-weight:700}
+.classroom-lessons a.done .lesson-name small{color:#7fd8a6}
+.lesson-resume{margin:10px 0 0;font-size:13px;color:var(--page-muted)}
+.lesson-restart{background:none;border:0;padding:0;color:#ffa366;font:inherit;text-decoration:underline;cursor:pointer}
+.lesson-done-form{margin:18px 0 0}
+.lesson-done{margin:18px 0 0;color:#7fd8a6;font-size:14px}

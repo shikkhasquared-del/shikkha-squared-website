@@ -8,7 +8,7 @@ export async function GET(request:Request){
   const slug=routeSlug(request);
   if(!slug)return missingPage(blank,'courses');
   try{
-    const room=await loadClassroom(request,slug);
+    const room=await loadClassroom(request,slug,{withProgress:true});
     if(!room)return missingPage(blank,'courses');
     const lesson=new URL(request.url).searchParams.get('lesson');
     return classroomPage(room,lesson===null?-1:Number(lesson),tenbyteHosts());

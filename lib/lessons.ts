@@ -4,7 +4,7 @@
 // Tenbyte only answers requests carrying this site's private referrer (TENBYTE_REFERRER), so a copied
 // Tenbyte address doesn't play anywhere else.
 
-export type Lesson={title:string;kind:string;resourceUrl:string;notes:string;duration:string;free:boolean};
+export type Lesson={id:string;title:string;kind:string;resourceUrl:string;notes:string;duration:string;free:boolean};
 export type VideoSource={origin:string;rootPath:string;masterPath:string};
 
 // Only HLS playlists on Tenbyte (or hosts listed in TENBYTE_HOSTS) are streamed through the site.
@@ -43,6 +43,6 @@ export function rewritePlaylist(text:string,playlistPath:string,source:VideoSour
 }
 
 export function courseLessons(course:any):Lesson[]{
-  return (Array.isArray(course?.lessons)?course.lessons:[]).map((l:any)=>({title:String(l.title||'Lesson'),kind:String(l.kind||'video'),resourceUrl:String(l.resourceUrl||''),notes:String(l.notes||''),duration:String(l.duration||''),free:l.free===true}));
+  return (Array.isArray(course?.lessons)?course.lessons:[]).map((l:any,i:number)=>({id:String(l.id||'i'+i).slice(0,60),title:String(l.title||'Lesson'),kind:String(l.kind||'video'),resourceUrl:String(l.resourceUrl||''),notes:String(l.notes||''),duration:String(l.duration||''),free:l.free===true}));
 }
 export const canOpen=(lesson:Lesson|undefined,enrolled:boolean)=>!!lesson&&(enrolled||lesson.free);

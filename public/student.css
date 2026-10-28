@@ -39,3 +39,5 @@
 .auth-courses a.ended{opacity:.7}
 .auth-courses a.ended small{color:#ffb3a8}
 .checkout-total small{display:block;margin-top:4px;font-size:12px;color:var(--page-muted)}
+.auth-courses .classroom-meter{display:block;height:5px;margin-top:10px;border-radius:99px;background:#ffffff14;overflow:hidden}
+.auth-courses .classroom-meter i{display:block;height:100%;background:#ff791a;border-radius:inherit}

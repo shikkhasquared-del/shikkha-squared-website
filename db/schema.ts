@@ -31,3 +31,10 @@ export const enrolments = sqliteTable('enrolments', {
   // When access ends; empty means lifetime (crash courses). See accessEndsAt in lib/payments.ts.
   expiresAt: text('expires_at'),
 }, table => [uniqueIndex('enrolments_student_course').on(table.studentId, table.courseSlug)]);
+// How far each student has got in each lesson: where to resume a video, and when the lesson was finished.
+// lesson_id is the lesson's id in the course record (or "i<index>" for lessons saved without one).
+export const lessonProgress = sqliteTable('lesson_progress', {
+  studentId: text('student_id').notNull(), courseSlug: text('course_slug').notNull(), lessonId: text('lesson_id').notNull(),
+  positionS: integer('position_s').notNull().default(0), durationS: integer('duration_s').notNull().default(0),
+  completedAt: text('completed_at'), updatedAt: text('updated_at').notNull(),
+}, table => [uniqueIndex('lesson_progress_student_lesson').on(table.studentId, table.courseSlug, table.lessonId), index('lesson_progress_student_recent').on(table.studentId, table.courseSlug, table.updatedAt)]);

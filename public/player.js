@@ -66,8 +66,33 @@
     }
   }
 
+  // Progress: start where the student stopped, and save their place every 15 seconds of watching,
+  // when they pause or leave the page, and when the video ends.
+  const start=Number(video.dataset.start)||0,progressUrl=video.dataset.progress;
+  if(progressUrl){
+    let sentAt=0,sentPosition=-1;
+    const save=done=>{
+      if(!video.duration||!isFinite(video.duration))return;
+      const position=Math.floor(video.currentTime);
+      if(!done&&position===sentPosition)return;
+      sentAt=Date.now();sentPosition=position;
+      const body=JSON.stringify({lesson:Number(video.dataset.lesson),position,duration:Math.floor(video.duration),done:!!done});
+      if(navigator.sendBeacon&&navigator.sendBeacon(progressUrl,new Blob([body],{type:'application/json'})))return;
+      fetch(progressUrl,{method:'POST',body,headers:{'content-type':'application/json'},keepalive:true,credentials:'same-origin'}).catch(()=>{});
+    };
+    video.addEventListener('timeupdate',()=>{if(!video.paused&&Date.now()-sentAt>=15000)save(false);});
+    video.addEventListener('pause',()=>{if(!video.ended)save(false);});
+    video.addEventListener('ended',()=>save(true));
+    addEventListener('pagehide',()=>save(false));
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save(false);});
+  }
+  const restart=document.querySelector('.lesson-restart');
+  if(restart)restart.addEventListener('click',()=>{video.currentTime=0;video.play().catch(()=>{});restart.closest('.lesson-resume').hidden=true;});
+  // Safari's own player (no hls.js) seeks once it knows the video's length.
+  if(start)video.addEventListener('loadedmetadata',()=>{if(video.currentTime<1&&start<video.duration-5)video.currentTime=start;},{once:true});
+
   if(window.Hls&&window.Hls.isSupported()){
-    const hls=new window.Hls({maxBufferLength:30});
+    const hls=new window.Hls({maxBufferLength:30,startPosition:start||-1});
     hls.on(window.Hls.Events.ERROR,(_,data)=>{
       if(!data.fatal)return;
       if(data.type===window.Hls.ErrorTypes.NETWORK_ERROR&&!data.response?.code){hls.startLoad();return;}
