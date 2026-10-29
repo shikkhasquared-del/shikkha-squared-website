@@ -23,6 +23,16 @@ export function normalizePhone(input:unknown):string|null {
 }
 export function displayPhone(phone:string){return phone.replace(/^\+880(\d{4})(\d{6})$/,'0$1-$2');}
 
+// The name to greet a student by: the first word that isn't a title or an initial. Many Bangladeshi names
+// start with one ("Md. Rafiqul Islam", "Mst. Nusrat Jahan", "A.K.M. Fazlul Haque", "মোঃ রফিকুল ইসলাম").
+const TITLE=/^(md|mohd|mst|mt|mr|mrs|ms|dr|prof|engr|sk|মোঃ|মো|মোছাঃ|মোসাঃ|ডাঃ|ডঃ)[.:ঃ]*$/i;
+const INITIALS=/^(\p{L}\.)+\p{L}?\.?$/u;
+export function firstName(name:string){
+  const words=name.trim().split(/\s+/).filter(Boolean);
+  const word=words.find(w=>!TITLE.test(w)&&!INITIALS.test(w))??words[0]??'';
+  return word.replace(/[.,:;]+$/,'');
+}
+
 // Same-origin relative destination after sign-in; anything else falls back to the account page.
 export function safeNext(value:unknown,fallback='/account'):string {
   const text=String(value??'');

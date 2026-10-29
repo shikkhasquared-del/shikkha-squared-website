@@ -23,7 +23,7 @@
 .auth-links a,.auth-link-button{color:#ffa366;background:none;border:0;padding:0;font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .auth-method{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--page-line)}
 .auth-method>span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8b8999}
-.auth-method strong{font-size:15px;font-weight:550}
+.auth-method strong{font-size:15px;font-weight:550;overflow-wrap:anywhere}
 .auth-signout{margin-top:30px}
 @media(max-width:560px){.student-auth{padding-block:36px 60px}.auth-card{padding:28px 22px;border-radius:18px}}
 .checkout-total{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:16px 0;margin-bottom:18px;border-block:1px solid var(--page-line);font-size:14px;color:var(--page-muted)}

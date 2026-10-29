@@ -133,3 +133,8 @@ test('Sign-in forms reject cross-site posts',()=>{
   assert.match(auth.cookie(new Request('https://site.test/'),'ss_session','abc',{maxAge:60}),/HttpOnly; SameSite=Lax; Secure$/);
   assert.equal(auth.readCookie(new Request('https://site.test/',{headers:{cookie:'a=1; ss_session=tok'}}),'ss_session'),'tok');
 });
+
+test('Students are greeted by their first name, skipping titles and initials common in Bangladeshi names',()=>{
+  const cases={'Md. Abdullah Al Mamun':'Abdullah','Md Rafiqul Islam':'Rafiqul','Mst. Nusrat Jahan':'Nusrat','A.K.M. Fazlul Haque':'Fazlul','S. M. Rahman':'Rahman','মোঃ রফিকুল ইসলাম':'রফিকুল','Dr. Shahid':'Shahid','Sk. Hasina':'Hasina','Jo':'Jo','Lazim Mahmood':'Lazim','  Nusrat  ':'Nusrat','Mdx Karim':'Mdx','Md.':'Md','':''};
+  for(const [name,expected] of Object.entries(cases))assert.equal(auth.firstName(name),expected,name);
+});

@@ -10,6 +10,10 @@ The redesigned public website for Shikkha Squared. It includes:
 
 It runs as a Cloudflare Worker (built with [vinext](https://github.com/cloudflare/vinext)). The catalogue (courses, sections, instructors, content, banners) is managed in the admin dashboard (`D:\Shikkha_Squared_Backend_Source`), and both share one D1 database.
 
+## Stress-testing pages
+
+With the dev server running, open `/dev/break-ui?page=classroom&data=worst` (pages: `course`, `classroom`, `account`; data: `demo`, `worst`, `empty`, `one`, `many`; add `&lesson=N` in the classroom). It renders the real pages with the sample data in `lib/break-ui-fixtures.ts`: the longest values the admin accepts, Bengali text, missing photos and 100-lesson courses. Check it at phone width after changing these pages. It is local only: the production build turns it into a 404.
+
 ## Main files
 
 | Purpose | Files |

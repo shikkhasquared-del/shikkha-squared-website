@@ -1,6 +1,15 @@
 // Lesson player: plays the HLS stream served (and access-checked) by this site, with the student's watermark on top.
 (()=>{
   'use strict';
+  // In a long course, scroll the lesson list (not the page) so the current lesson is in view.
+  const current=document.querySelector('.classroom-lessons [aria-current]'),list=current&&current.closest('ol');
+  const reveal=()=>{
+    if(!list||list.scrollHeight<=list.clientHeight)return;
+    const offset=current.getBoundingClientRect().top-list.getBoundingClientRect().top;
+    if(offset<0||offset>list.clientHeight-current.offsetHeight)list.scrollTop+=offset-list.clientHeight/3;
+  };
+  reveal();
+  addEventListener('load',reveal,{once:true}); // again once fonts have loaded and line heights are final
   const video=document.getElementById('lesson-video');
   if(!video)return;
   const src=video.dataset.src,error=document.querySelector('.lesson-player-error'),frame=video.closest('.lesson-player');

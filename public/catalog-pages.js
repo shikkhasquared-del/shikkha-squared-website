@@ -28,3 +28,13 @@
  addEventListener('popstate',()=>{const params=new URLSearchParams(location.search),category=location.pathname.match(/^\/courses\/category\/([^/]+)\/?$/)?.[1]||'';for(const field of form.elements)if(field.name)field.value=params.get(field.name)||(field.name==='sort'?'recommended':field.name==='section'?category:'');apply(false);});
  apply(false);
 })();
+
+// A teacher's photo that fails to load shows the plain person icon instead of a broken-image box.
+(()=>{
+ 'use strict';
+ const person="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ca936d' stroke-width='1.6'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E";
+ const replace=img=>{if(img.classList.contains('photo-missing'))return;img.classList.add('photo-missing');img.src=person;};
+ for(const img of document.querySelectorAll('.detail-teacher img,.course-teacher img,.instructor-portrait img,.profile-photo img')){
+  if(img.complete&&img.naturalWidth===0&&img.getAttribute('src'))replace(img);else img.addEventListener('error',()=>replace(img),{once:true});
+ }
+})();

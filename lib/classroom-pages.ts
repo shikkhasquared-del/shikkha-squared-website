@@ -1,9 +1,9 @@
-import { esc, shell, type Catalogue } from './catalog-pages';
+import { esc, plural, shell, type Catalogue } from './catalog-pages';
 import { canOpen, videoSource } from './lessons';
 import { lessonFileId } from './files';
 import { purchasable, taka } from './payments';
 import { accessDate, accessSummary, endingNotice, endingSoon } from './access';
-import { displayPhone, type Student } from './student-auth';
+import { displayPhone, firstName, type Student } from './student-auth';
 import { clock, resumeAt, resumeIndex } from './progress';
 import type { Classroom } from './classroom';
 
@@ -12,8 +12,9 @@ const blank:Catalogue={courses:[],sections:[],instructors:[],settings:{},campaig
 const HLS={src:'https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js',integrity:'sha384-V5ruNBgmYcC3SJRUQeNykAAAgde5gOFq/Hu0CZj7bygDP0yRIhkvX8+w0u/7mRvr'};
 const kinds:Record<string,string>={video:'Video',reading:'Reading',quiz:'Quiz','3d':'3D resource'};
 
-// Shown over the video so a recording or screenshot identifies the account it came from.
-const watermark=(s:Student)=>[s.name,s.phone?displayPhone(s.phone):s.email].filter(Boolean).join(' · ')||s.id.slice(0,8);
+// Shown over the video so a recording or screenshot identifies the account it came from. The phone number or
+// email comes first and is never cut off; the first name follows (the full name when there's nothing else).
+const watermark=(s:Student)=>{const contact=s.phone?displayPhone(s.phone):s.email;return (contact?[contact,s.name&&firstName(s.name)]:[s.name]).filter(Boolean).join(' · ')||s.id.slice(0,8);};
 
 // A week before monthly access ends, a reminder to renew sits above the lesson.
 function renewNotice(room:Classroom){
@@ -51,17 +52,17 @@ function lessonPanel(room:Classroom,index:number,hosts:string[]){
 
 export function classroomPage(room:Classroom,requested:number,hosts:string[]){
   const title=String(room.course.title||'Course');
-  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=8','/classroom.css?v=9'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
+  if(!room.lessons.length)return shell(blank,{title,description:'Course lessons',active:'courses',page:'classroom',styles:['/student.css?v=9','/classroom.css?v=10'],body:`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="/account">My courses</a> / <span>${esc(title)}</span></nav><div class="lesson-locked open"><strong>Lessons are on their way.</strong><p>Your course lessons will appear here as soon as they're added.</p><a class="page-button outline" href="/courses/${encodeURIComponent(room.slug)}">Course details</a></div></section>`});
   const openable=(l:typeof room.lessons[number])=>canOpen(l,room.enrolled);
   const index=Number.isInteger(requested)&&requested>=0&&requested<room.lessons.length?requested:resumeIndex(room.lessons,room.progress,openable);
   const lesson=room.lessons[index];
   const status=(l:typeof lesson)=>{const p=room.progress.get(l.id);return p?.completed?'done':p?'started':'';};
   const list=room.lessons.map((l,i)=>{const open=openable(l),state=open?status(l):'';return `<li><a href="/learn/${room.slug}?lesson=${i}" ${i===index?'aria-current="true"':''} class="${[open?'':'locked',state].join(' ').trim()}"><span class="lesson-number">${state==='done'?'<span class="lesson-check" aria-label="Finished">✓</span>':String(i+1).padStart(2,'0')}</span><span class="lesson-name">${esc(l.title)}<small>${esc(kinds[l.kind]||l.kind)}${l.duration?' · '+esc(l.duration):''}${l.free&&!room.enrolled?' · Free preview':''}${open?'':' · Locked'}${state==='done'?' · Finished':state==='started'?' · In progress':''}</small></span></a></li>`;}).join('');
   const done=room.lessons.filter(l=>room.progress.get(l.id)?.completed).length;
-  const meter=room.student&&room.enrolled?`<div class="classroom-progress"><span>${done} of ${room.lessons.length} lessons finished</span><span class="classroom-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${room.lessons.length}" aria-valuenow="${done}" aria-label="Lessons finished"><i style="width:${Math.round(done/room.lessons.length*100)}%"></i></span></div>`:'';
+  const meter=room.student&&room.enrolled?`<div class="classroom-progress"><span>${done} of ${plural(room.lessons.length,'lesson')} finished</span><span class="classroom-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${room.lessons.length}" aria-valuenow="${done}" aria-label="Lessons finished"><i style="width:${Math.round(done/room.lessons.length*100)}%"></i></span></div>`:'';
   const finished=status(lesson)==='done';
   const markDone=room.student&&openable(lesson)&&!videoSource(lesson.resourceUrl,hosts)?(finished?'<p class="lesson-done">✓ You finished this lesson.</p>':`<form method="post" action="/learn/${room.slug}/progress" class="lesson-done-form"><input type="hidden" name="lesson" value="${index}"><input type="hidden" name="done" value="1"><button class="page-button outline" type="submit">Mark as done</button></form>`):'';
   const nav=`<div class="lesson-nav">${index>0?`<a class="page-button outline" href="/learn/${room.slug}?lesson=${index-1}">Previous</a>`:'<span></span>'}${index<room.lessons.length-1?`<a class="page-button" href="/learn/${room.slug}?lesson=${index+1}">Next lesson</a>`:''}</div>`;
   const body=`<section class="catalog-container classroom"><nav class="page-breadcrumb" aria-label="Breadcrumb"><a href="${room.enrolled?'/account':'/courses/'+encodeURIComponent(room.slug)}">${room.enrolled?'My courses':'Course details'}</a> / <span>${esc(title)}</span></nav><div class="classroom-grid"><div class="classroom-main">${renewNotice(room)}${lessonPanel(room,index,hosts)}<p class="page-eyebrow">LESSON ${index+1} OF ${room.lessons.length}${finished?' · FINISHED ✓':''}</p><h1>${esc(lesson.title)}</h1>${canOpen(lesson,room.enrolled)&&lesson.notes?`<p class="lesson-notes">${esc(lesson.notes)}</p>`:''}${markDone}${nav}</div><aside class="classroom-lessons" aria-label="Course lessons"><h2>${esc(title)}${room.access?`<small class="classroom-access">${esc(accessSummary(room.access))}</small>`:''}</h2>${meter}<ol>${list}</ol></aside></div></section>`;
-  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=8','/classroom.css?v=9'],scripts:[HLS,{src:'/player.js?v=8'}],headers:{'x-frame-options':'DENY'},body});
+  return shell(blank,{title:lesson.title+' · '+title,description:'Course lesson',active:'courses',page:'classroom',styles:['/student.css?v=9','/classroom.css?v=10'],scripts:[HLS,{src:'/player.js?v=10'}],headers:{'x-frame-options':'DENY'},body});
 }
