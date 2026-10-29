@@ -32,3 +32,5 @@ export const canBuy=(a:Access|null,now=Date.now())=>!a||!a.active||endingSoon(a,
 export const renewedEndsAt=(format:unknown,current:string|null|undefined,now:number)=>
   isLifetime(format)?null:new Date(addOneMonth(Math.max(now,current?Date.parse(current):0))).toISOString();
 export const endingNotice=(a:Access,now=Date.now())=>{const d=daysLeft(a,now)!;return d<=1?`Your access ends ${d===0?'today':'tomorrow'} (${accessDate(a.expiresAt!)}).`:`Your access ends in ${d} days, on ${accessDate(a.expiresAt!)}.`;};
+// When access ends, in a few words: "today", "tomorrow" or "in 3 days".
+export const endsWhen=(a:Access,now=Date.now())=>{const d=daysLeft(a,now)!;return d===0?'today':d===1?'tomorrow':`in ${d} days`;};

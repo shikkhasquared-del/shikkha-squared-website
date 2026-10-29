@@ -213,6 +213,7 @@ test('Reminders start a week before monthly access ends',()=>{
   assert.equal(access.canBuy({active:true,expiresAt:at(20*day)},now),false);
   assert.equal(access.canBuy({active:true,expiresAt:at(2*day)},now),true);
   assert.equal(access.canBuy({active:true,expiresAt:null},now),false);
+  assert.deepEqual([3*3600e3,day/2,3*day].map(ms=>access.endsWhen({active:true,expiresAt:at(ms)},now)),['today','tomorrow','in 3 days']);
 });
 
 test('Discount codes lower the price, are checked against course, dates and uses, and count a use when paid',async()=>{

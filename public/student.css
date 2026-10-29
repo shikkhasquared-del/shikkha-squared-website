@@ -56,3 +56,7 @@
 .discount-form .auth-message{margin-top:8px}
 .checkout-discount{margin:0 0 18px;padding:10px 12px;border:1px solid #2fbf7155;border-radius:10px;background:#2fbf7114;color:#a6ecc4;font-size:14px}
 .checkout-discount a{color:#ffa366;margin-left:4px}
+.renew-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.renew-list li{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.renew-list a{color:#ffd2b0;font-weight:500;overflow-wrap:anywhere;min-width:0}
+.renew-list span{flex-shrink:0;color:#ffa366;font-size:12px;white-space:nowrap}

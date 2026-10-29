@@ -38,3 +38,17 @@
   if(img.complete&&img.naturalWidth===0&&img.getAttribute('src'))replace(img);else img.addEventListener('error',()=>replace(img),{once:true});
  }
 })();
+
+// On phones, a long course description shows its first lines with a Read more button, so the price and
+// Buy button aren't buried far below it.
+(()=>{
+ 'use strict';
+ const text=document.querySelector('.course-description');
+ if(!text||!matchMedia('(max-width: 800px)').matches)return;
+ text.classList.add('clamped');
+ if(text.scrollHeight<=text.clientHeight+4){text.classList.remove('clamped');return;}
+ const more=document.createElement('button');
+ more.type='button';more.className='course-description-more';more.textContent='Read more';more.setAttribute('aria-expanded','false');
+ more.addEventListener('click',()=>{const open=!text.classList.toggle('clamped');more.textContent=open?'Show less':'Read more';more.setAttribute('aria-expanded',String(open));});
+ text.after(more);
+})();

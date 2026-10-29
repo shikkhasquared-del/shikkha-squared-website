@@ -14,3 +14,7 @@
 .detail-cover-art{padding:0 28px;text-align:center}.detail-cover-art strong{font-size:clamp(26px,4vw,42px);line-height:1.1;overflow-wrap:anywhere}
 /* Fix 8: a person photo that fails to load shows the plain person icon (catalog-pages.js). */
 img.photo-missing{object-fit:contain;padding:18%;background:#ffffff0d}
+.course-detail-copy h1.long-title{font-size:clamp(28px,3vw,44px);letter-spacing:-.045em}
+@media(max-width:800px){.course-detail-copy h1.long-title{font-size:28px}}
+.course-description.clamped{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:8;line-clamp:8;overflow:hidden}
+.course-description-more{display:inline-block;margin:-14px 0 22px;padding:0;background:none;border:0;color:#ffa366;font-size:13px;font-weight:600;cursor:pointer}

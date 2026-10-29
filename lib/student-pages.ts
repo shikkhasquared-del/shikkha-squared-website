@@ -1,13 +1,13 @@
 import { esc, plural, shell, type Catalogue } from './catalog-pages';
 import { MAX_DEVICES, displayPhone, firstName, type Student } from './student-auth';
 import { discountedPrice, taka, type Order, type Enrolment } from './payments';
-import { accessDate, accessLabel, accessSummary, endingNotice, endingSoon, isLifetime, renewedEndsAt, type Access } from './access';
+import { accessDate, accessLabel, accessSummary, endingNotice, endingSoon, endsWhen, isLifetime, renewedEndsAt, type Access } from './access';
 import type { CourseProgress } from './progress';
 
 // Student sign-in and account pages, rendered inside the shared catalogue page shell.
 const blank:Catalogue={courses:[],sections:[],instructors:[],settings:{},campaigns:[]};
 const message=(error?:string,notice?:string)=>(error?`<p class="auth-message error" role="alert">${esc(error)}</p>`:'')+(notice?`<p class="auth-message" role="status">${esc(notice)}</p>`:'');
-const page=(title:string,body:string,status=200)=>shell(blank,{title,description:'Sign in to your Shikkha Squared student account.',active:'account',page:'account',status,styles:['/student.css?v=9'],headers:{'x-frame-options':'DENY'},body:`<section class="catalog-container student-auth">${body}</section>`});
+const page=(title:string,body:string,status=200)=>shell(blank,{title,description:'Sign in to your Shikkha Squared student account.',active:'account',page:'account',status,styles:['/student.css?v=10'],headers:{'x-frame-options':'DENY'},body:`<section class="catalog-container student-auth">${body}</section>`});
 const googleIcon='<svg viewBox="0 0 24 24" aria-hidden="true" class="auth-google-mark"><path fill="#4285F4" d="M22.6 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8.1Z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1-3.7 1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.8 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8l3.7-2.8Z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7.1l3.7 2.8C6.7 7.3 9.1 5.4 12 5.4Z"/></svg>';
 const hidden=(name:string,value:string)=>`<input type="hidden" name="${name}" value="${esc(value)}">`;
 const phoneForm=(next:string,label='Send code')=>`<form class="auth-form" method="post" action="/auth/phone/start">${hidden('next',next)}<label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" maxlength="20" required><button class="page-button" type="submit">${label}</button></form>`;
@@ -22,7 +22,14 @@ export function codePage({phone,next,error,notice,status}:{phone:string;next:str
 }
 
 // Courses whose access ends within a week, so students can renew in time.
-const renewBanner=(courses:Enrolment[])=>courses.filter(c=>endingSoon({active:c.active,expiresAt:c.expires_at})).map(c=>`<p class="auth-message renew" role="status"><strong>${esc(c.course_title)}:</strong> ${esc(endingNotice({active:c.active,expiresAt:c.expires_at}))} <a href="/courses/${encodeURIComponent(c.course_slug)}">Renew access</a></p>`).join('');
+// One reminder for one course; several courses ending the same week share a single box, soonest first.
+const renewBanner=(courses:Enrolment[])=>{
+  const ending=courses.map(c=>({c,a:{active:c.active,expiresAt:c.expires_at}})).filter(x=>endingSoon(x.a)).sort((x,y)=>x.c.expires_at!.localeCompare(y.c.expires_at!));
+  if(!ending.length)return '';
+  const renew=(slug:string)=>`/courses/${encodeURIComponent(slug)}`;
+  if(ending.length===1){const {c,a}=ending[0];return `<p class="auth-message renew" role="status"><strong>${esc(c.course_title)}:</strong> ${esc(endingNotice(a))} <a href="${renew(c.course_slug)}">Renew access</a></p>`;}
+  return `<div class="auth-message renew" role="status"><strong>Access ends this week for ${plural(ending.length,'course')}.</strong><ul class="renew-list">${ending.map(({c,a})=>`<li><a href="${renew(c.course_slug)}">${esc(c.course_title)}</a><span>ends ${esc(endsWhen(a))}</span></li>`).join('')}</ul></div>`;
+};
 const progressLine=(p:CourseProgress|undefined)=>p&&p.total?` · ${p.done} of ${plural(p.total,'lesson')} finished`:'';
 const progressBar=(p:CourseProgress|undefined)=>p&&p.total?`<span class="classroom-meter" aria-hidden="true"><i style="width:${Math.round(p.done/p.total*100)}%"></i></span>`:'';
 export function accountPage(student:Student,{google,error,notice,status,courses=[],progress=new Map()}:{google:boolean;error?:string;notice?:string;status?:number;courses?:Enrolment[];progress?:Map<string,CourseProgress>}){
