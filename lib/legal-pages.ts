@@ -14,7 +14,7 @@ const contactBlock=(c:Contact)=>`<ul class="legal-contact"><li>Email: <a href="m
 const draft=()=>LEGAL_DRAFT?`<p class="legal-draft" role="note"><strong>Draft — under review.</strong> This page is being reviewed by Shikkha Squared and may change before launch.</p>`:'';
 
 function page(data:Catalogue,title:string,description:string,body:string){
-  return shell(data,{title,description,active:'',page:'legal',path:title==='Privacy Policy'?'/privacy':'/terms',styles:['/legal.css?v=1'],body:`<article class="catalog-container legal"><p class="page-eyebrow">SHIKKHA SQUARED</p><h1>${esc(title)}</h1><p class="legal-updated">Last updated: ${LEGAL_UPDATED}</p>${draft()}${body}</article>`});
+  return shell(data,{title,description,active:'',page:'legal',path:title==='Privacy Policy'?'/privacy':'/terms',styles:['/legal.css?v=2'],body:`<article class="catalog-container legal"><p class="page-eyebrow">SHIKKHA SQUARED</p><h1>${esc(title)}</h1><p class="legal-updated">Last updated: ${LEGAL_UPDATED}</p>${draft()}${body}</article>`});
 }
 
 export function privacyPage(data:Catalogue){
