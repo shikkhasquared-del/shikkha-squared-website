@@ -12,6 +12,8 @@
 .ssb-title{min-width:0}
 .ssb-title strong{display:block;font-size:17px;font-weight:650}
 .ssb-title small{display:block;margin-top:3px;font-size:13px;line-height:1.4;color:#a5a3af}
+.ssb-panel.short .ssb-title small{display:none}
+.ssb-panel.short .ssb-head{align-items:center;padding-block:4px}
 .ssb-close{flex:none;width:40px;height:40px;margin:-4px -4px 0 0;border:0;border-radius:10px;background:none;color:#d6d4dc;font-size:26px;line-height:1;cursor:pointer}
 .ssb-close:hover{background:#ffffff12}
 .ssb-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:14px 16px}

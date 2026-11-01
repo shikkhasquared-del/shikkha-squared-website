@@ -3,10 +3,10 @@
 (()=>{
   'use strict';
   const css=document.createElement('link');
-  css.rel='stylesheet';css.href='/chat.css?v=1';document.head.appendChild(css);
+  css.rel='stylesheet';css.href='/chat.css?v=2';document.head.appendChild(css);
 
-  const STORE='ss-chat',LIMIT=500;
-  const read=()=>{try{const saved=JSON.parse(sessionStorage.getItem(STORE)||'[]');return Array.isArray(saved)?saved:[];}catch{return [];}};
+  const STORE='ss-chat',LIMIT=500,TIMEOUT=30000;
+  const read=()=>{try{const saved=JSON.parse(sessionStorage.getItem(STORE)||'[]');return Array.isArray(saved)?saved.filter(m=>m&&typeof m.content==='string'&&(m.role==='user'||m.role==='assistant')).slice(-20):[];}catch{return [];}};
   const save=()=>{try{sessionStorage.setItem(STORE,JSON.stringify(history.slice(-20)));}catch{}};
   const el=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text)node.textContent=text;return node;};
   const history=read();
@@ -31,7 +31,7 @@
   human.target='_blank';human.rel='noopener noreferrer';human.href=whatsapp;
   const form=el('form','ssb-form');
   const input=el('input','ssb-input');
-  input.type='text';input.maxLength=LIMIT;input.placeholder='Type your question…';input.autocomplete='off';input.setAttribute('aria-label','Your question');input.enterKeyHint='send';
+  input.type='text';input.maxLength=LIMIT;input.placeholder='Type your question…';input.autocomplete='off';input.dir='auto';input.setAttribute('aria-label','Your question');input.enterKeyHint='send';
   const send=el('button','ssb-send','Send');
   send.type='submit';
   form.append(input,send);
@@ -53,7 +53,9 @@
     }
     node.append(document.createTextNode(text.slice(at)));
   };
-  const show=(role,text)=>{const row=el('p','ssb-msg '+role);fill(row,text);log.append(row);log.scrollTop=log.scrollHeight;return row;};
+  // A message too tall to fit opens at its start, so the visitor doesn't land on the end of a long reply.
+  const settle=()=>{const last=log.lastElementChild;log.scrollTop=last&&last.offsetHeight>log.clientHeight?last.offsetTop-log.offsetTop:log.scrollHeight;};
+  const show=(role,text)=>{const row=el('p','ssb-msg '+role);row.dir='auto';fill(row,text);log.append(row);settle();return row;};
   const suggestions=el('div','ssb-suggest');
   for(const text of ['Which courses do you have for A Levels?','How long does course access last?','How can I pay?']){
     const chip=el('button','',text);chip.type='button';chip.addEventListener('click',()=>ask(text));suggestions.append(chip);
@@ -74,8 +76,9 @@
     history.push({role:'user',content:question});
     const typing=show('bot typing','…');
     typing.setAttribute('aria-label','The assistant is typing');
+    const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),TIMEOUT);
     try{
-      const response=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({messages:history.slice(-6)})});
+      const response=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',signal:stop.signal,body:JSON.stringify({messages:history.slice(-6)})});
       const data=await response.json();
       if(data.whatsapp)human.href=whatsapp=data.whatsapp;
       typing.remove();
@@ -85,13 +88,14 @@
       typing.remove();history.pop();
       show('bot','I could not connect. Check your internet and try again, or message our team on WhatsApp.');
     }
+    clearTimeout(timer);
     save();
     busy=false;send.disabled=false;
     if(matchMedia('(hover:hover)').matches)input.focus();
   }
 
-  // On phones the panel fills the visible screen, staying above the on-screen keyboard.
-  const fit=()=>{const view=window.visualViewport;if(view)panel.style.setProperty('--ssb-height',view.height+'px');log.scrollTop=log.scrollHeight;};
+  // On phones the panel fills the visible screen, staying above the on-screen keyboard. When that leaves little room, the header shrinks.
+  const fit=()=>{const view=window.visualViewport;if(view){panel.style.setProperty('--ssb-height',view.height+'px');panel.classList.toggle('short',view.height<460);}settle();};
   const open=state=>{
     panel.hidden=!state;bubble.hidden=state;bubble.setAttribute('aria-expanded',String(state));
     document.documentElement.classList.toggle('ssb-open',state);

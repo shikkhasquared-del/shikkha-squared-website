@@ -56,6 +56,29 @@ test('Daily limits stop a visitor, then the whole site, and old counts are remov
   assert.equal(db.sqlite.prepare("SELECT COUNT(*) n FROM chat_usage WHERE day='2026-11-01'").get().n,0);
 });
 
+test('Someone at risk gets the fixed help text, never AI-written numbers',()=>{
+  assert.match(C.systemPrompt(data),/reply with exactly SHOW_HELP_CONTACTS/);
+  for(const response of ['SHOW_HELP_CONTACTS',' SHOW_HELP_CONTACTS. Call +880123456'])assert.equal(C.cleanReply({response}),C.CARE_REPLY);
+  for(const text of ['09612-119911','999','কান পেতে রই','Kaan Pete Roi'])assert.ok(C.CARE_REPLY.includes(text),text);
+});
+
+test('The assistant is told how sign-in, devices and refunds work',()=>{
+  const prompt=C.systemPrompt(data);
+  for(const fact of ['there are no passwords','signs out the one that signed in earliest','must not be shared','Requests go by email to hello@example.com'])assert.ok(prompt.includes(fact),fact);
+});
+
+test('Too much information drops descriptions, then FAQs, then says courses are missing',()=>{
+  const fill=(n,extra={})=>Array.from({length:n},(_,i)=>({id:'c'+i,title:'Course '+i,board:'Cambridge',format:'full',teacher:'Bappi Sir',priceMinor:100000,checkout:true,description:'A long description of this course.',...extra}));
+  const noBlurbs=C.knowledge({...data,courses:fill(70)});
+  assert.equal(noBlurbs.includes('A long description'),false);
+  assert.ok(noBlurbs.includes('Do you have offline classes?')&&noBlurbs.includes('/courses/c69'));
+  const many=C.knowledge({...data,courses:fill(200)});
+  assert.ok(many.length<=12000);
+  assert.ok(many.includes('/instructors/bappi-sir'),'teachers are kept');
+  assert.ok(many.endsWith('Some courses are not listed here. All courses are at /courses.'));
+  assert.equal(many.includes('Do you have offline classes?'),false);
+});
+
 test('Replies become plain text',()=>{
   assert.equal(C.cleanReply({response:'<think>plan</think>**Physics** `A2`\n## Fees'}),'Physics A2\nFees');
   assert.equal(C.cleanReply({choices:[{message:{content:'Hello'}}]}),'Hello');

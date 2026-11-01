@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { getCatalogue } from '../../../lib/catalog-pages';
-import { ChatRefusal, MAX_REPLY_TOKENS, MODEL, cleanMessages, cleanReply, systemPrompt, takeChatTurn, whatsappLink } from '../../../lib/chat';
+import { AI_TIMEOUT_MS, ChatRefusal, MAX_REPLY_TOKENS, MODEL, cleanMessages, cleanReply, systemPrompt, takeChatTurn, whatsappLink } from '../../../lib/chat';
 import { isSameOrigin } from '../../../lib/student-auth';
 import { clientIp, otpPepper, studentDb } from '../../../lib/student-server';
 export const dynamic='force-dynamic';
@@ -21,7 +21,8 @@ export async function POST(request:Request){
     const turn=await takeChatTurn(studentDb(),clientIp(request),otpPepper()||'shikkha');
     if(turn==='visitor')return answer({reply:'You have reached today’s message limit. Please message our team on WhatsApp and they will help you.',handoff:true,whatsapp});
     if(turn==='site'||!env.AI)return answer({reply:busy,handoff:true,whatsapp});
-    const reply=cleanReply(await env.AI.run(MODEL,{messages:[{role:'system',content:systemPrompt(data)},...messages],max_completion_tokens:MAX_REPLY_TOKENS,temperature:0.2,chat_template_kwargs:{enable_thinking:false}}));
+    const timedOut=new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('AI timed out')),AI_TIMEOUT_MS));
+    const reply=cleanReply(await Promise.race([env.AI.run(MODEL,{messages:[{role:'system',content:systemPrompt(data)},...messages],max_completion_tokens:MAX_REPLY_TOKENS,temperature:0.2,chat_template_kwargs:{enable_thinking:false}}),timedOut]));
     if(!reply)throw new Error('Empty reply');
     return answer({reply,whatsapp});
   }catch(e){
