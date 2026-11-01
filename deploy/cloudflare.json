@@ -6,6 +6,7 @@
   "r2_buckets": [
     { "binding": "BUCKET", "bucket_name": "shikkha-media" }
   ],
+  "ai": { "binding": "AI" },
   "services": [
     { "binding": "CMS", "service": "shikkha-admin" }
   ],

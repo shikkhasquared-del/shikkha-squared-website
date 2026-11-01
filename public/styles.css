@@ -27,3 +27,6 @@
 .managed-address{font-style:normal;font-size:13px;line-height:1.8;color:#92939e;padding-bottom:25px}
 
 .all-courses-link{display:flex;justify-content:center;margin-top:35px}.all-courses-link .btn{font-size:15px;min-height:48px}
+/* Narrow phones: the header keeps the full name; the Ask us bubble and page buttons cover contact. */
+@media(max-width:480px){.nav-actions>[data-contact]{display:none}}
+@media(min-width:701px) and (max-width:800px){.brand{font-size:17px;flex-shrink:0}.nav-links{gap:10px}.nav-links a{font-size:12px}}

@@ -61,3 +61,8 @@ export const accountActivity = sqliteTable('account_activity', {
   network: text('network').notNull(), city: text('city').notNull().default(''), country: text('country').notNull().default(''),
   device: text('device').notNull().default(''), createdAt: text('created_at').notNull(),
 }, table => [index('account_activity_student').on(table.studentId, table.createdAt), index('account_activity_time').on(table.createdAt)]);
+// Daily message counts for the website assistant (lib/chat.ts): one row for the site and one per scrambled
+// network code. No questions or answers are stored, and rows from earlier days are deleted.
+export const chatUsage = sqliteTable('chat_usage', {
+  key: text('key').primaryKey(), day: text('day').notNull(), count: integer('count').notNull().default(0),
+});

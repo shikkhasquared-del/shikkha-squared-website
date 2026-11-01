@@ -43,10 +43,17 @@ export function privacyPage(data:Catalogue){
 <li>Which lessons you have finished and where you stopped in each video, so you can carry on where you left off.</li>
 <li>To protect your account and our courses from sharing, we note each time you sign in or start a lesson video: the date and time, your approximate city and country (as reported by our hosting provider), the type of device (for example "iPhone" or "Windows") and a scrambled, one-way code made from your network address. We never store the address itself. Our team uses this only to spot accounts that seem to be shared.</li>
 </ul>
+<h3>When you use the website assistant</h3>
+<ul>
+<li>Your questions are sent to Cloudflare's AI service to write a reply. We don't store your questions or the replies, but please don't share passwords, payment details or other private information in the chat.</li>
+<li>To limit misuse, we count messages per day using a scrambled code made from your network address. These counts are deleted after a day.</li>
+<li>The assistant can make mistakes. It can't see your account or payments, and what it says doesn't change our terms.</li>
+</ul>
 <h3>Stored on your own device</h3>
 <ul>
 <li><strong>Sign-in cookie</strong> (<code>ss_session</code>): keeps you signed in for up to 30 days, or until you sign out.</li>
 <li><strong>Google sign-in cookie</strong> (<code>ss_oauth</code>): used for up to 10 minutes while you sign in with Google.</li>
+<li><strong>Current chat</strong>: your conversation with the website assistant is kept in your browser until you close the tab. It isn't sent to us except when you ask a question.</li>
 <li><strong>Saved courses and motion setting</strong>: the homepage remembers the courses you bookmark and whether you turned animations off, in your browser's local storage. This stays on your device and is not sent to us.</li>
 </ul>
 <p>We do not use advertising cookies, and we do not use tracking tools that follow you across other websites. To understand how the website is used (for example, how many people visit and which pages are popular), we use Cloudflare Web Analytics. It uses no cookies, does not identify you, and does not follow you to other websites; we only see totals.</p>

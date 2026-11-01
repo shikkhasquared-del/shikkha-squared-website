@@ -23,6 +23,7 @@ const localBindingConfig = {
   ],
   // Same local bucket as the admin, so worksheets uploaded in the local admin open here.
   r2_buckets: [{ binding: "BUCKET", bucket_name: "site-creator-r2" }],
+  ai: { binding: "AI" },
 };
 
 export default defineConfig(async ({ command }) => {

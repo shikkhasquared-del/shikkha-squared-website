@@ -50,6 +50,13 @@
       "when": 1793188277776,
       "tag": "0006_account_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793534343460,
+      "tag": "0007_chat_usage",
+      "breakpoints": true
     }
   ]
 }

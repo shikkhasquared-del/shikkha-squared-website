@@ -13,6 +13,8 @@ declare namespace Cloudflare {
     PUBLIC_ORIGIN?: string;
     // "on" lets search engines list the site; leave unset on the temporary workers.dev address.
     SEARCH_INDEXING?: string;
+    // Cloudflare Workers AI, for the website assistant (lib/chat.ts).
+    AI?: { run(model: string, input: unknown): Promise<unknown> };
     // Cloudflare Web Analytics site token (public).
     ANALYTICS_TOKEN?: string;
     // Course payments (SSLCommerz). SSLCOMMERZ_LIVE="true" uses the live gateway; otherwise the sandbox.
