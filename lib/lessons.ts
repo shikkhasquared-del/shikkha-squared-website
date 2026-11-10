@@ -5,6 +5,7 @@
 // Tenbyte address doesn't play anywhere else.
 
 export type Lesson={id:string;title:string;kind:string;resourceUrl:string;notes:string;duration:string;free:boolean};
+export type LessonInput={id?:unknown;title?:unknown;kind?:unknown;resourceUrl?:unknown;notes?:unknown;duration?:unknown;free?:unknown};
 export type VideoSource={origin:string;rootPath:string;masterPath:string};
 
 // Only HLS playlists on Tenbyte (or hosts listed in TENBYTE_HOSTS) are streamed through the site.
@@ -42,7 +43,8 @@ export function rewritePlaylist(text:string,playlistPath:string,source:VideoSour
   }).join('\n');
 }
 
-export function courseLessons(course:any):Lesson[]{
-  return (Array.isArray(course?.lessons)?course.lessons:[]).map((l:any,i:number)=>({id:String(l.id||'i'+i).slice(0,60),title:String(l.title||'Lesson'),kind:String(l.kind||'video'),resourceUrl:String(l.resourceUrl||''),notes:String(l.notes||''),duration:String(l.duration||''),free:l.free===true}));
+export function courseLessons(course:{lessons?:unknown}|null|undefined):Lesson[]{
+  const lessons:LessonInput[]=Array.isArray(course?.lessons)?course.lessons:[];
+  return lessons.map((l,i)=>({id:String(l.id||'i'+i).slice(0,60),title:String(l.title||'Lesson'),kind:String(l.kind||'video'),resourceUrl:String(l.resourceUrl||''),notes:String(l.notes||''),duration:String(l.duration||''),free:l.free===true}));
 }
 export const canOpen=(lesson:Lesson|undefined,enrolled:boolean)=>!!lesson&&(enrolled||lesson.free);

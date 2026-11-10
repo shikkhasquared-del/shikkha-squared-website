@@ -8,7 +8,7 @@ The redesigned public website for Shikkha Squared. It includes:
 - the classroom, where enrolled students watch protected lesson videos;
 - the privacy and terms pages.
 
-It runs as a Cloudflare Worker (built with [vinext](https://github.com/cloudflare/vinext)). The catalogue (courses, sections, instructors, content, banners) is managed in the admin dashboard (`D:\Shikkha_Squared_Backend_Source`), and both share one D1 database.
+It runs as a Cloudflare Worker (built with [vinext](https://github.com/cloudflare/vinext)). The catalogue (courses, sections, instructors, content, banners) is managed in the admin dashboard (`D:\Website\Shikkha_Squared_Backend_Source`), and both share one D1 database.
 
 ## Stress-testing pages
 
@@ -44,21 +44,30 @@ Open http://localhost:5174. Run the admin at the same time (`pnpm dev` in its fo
 
 With `SMS_PROVIDER="console"`, phone sign-in codes are printed in the terminal instead of being sent.
 
-Both sites keep their local database in `D:\.shikkha-dev-state`. To create this site's tables in a new local database, build once and apply the migrations in order:
+Both sites keep their local database in `D:\Website\.shikkha-dev-state`. To create this site's tables in a new local database, build once and apply the migrations in order:
 
 ```sh
 pnpm build
 node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0000_student_accounts.sql
 node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0001_orders_enrolments.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0002_enrolment_expiry.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0003_lesson_progress.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0004_file_downloads.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0005_discount_codes.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0006_account_activity.sql
+node --import ./scripts/wrangler-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to ../.shikkha-dev-state --file drizzle/0007_chat_usage.sql
 ```
 
-The catalogue tables come from the admin project's migration.
+Apply the admin project's catalogue migration before using either app. The database and uploaded files are shared by both apps.
+
+After building, `pnpm start` serves the local build on the same port as `pnpm dev`, loading the project's `.dev.vars` and using the same shared database and file store. Both commands accept a `SHIKKHA_DEV_STATE` environment override for the shared state directory.
 
 ## Checks
 
 ```sh
-node --test tests/*.test.mjs
-pnpm exec tsc --noEmit
+pnpm test
+pnpm lint
+pnpm typecheck
 pnpm build
 ```
 
@@ -91,5 +100,5 @@ Plain settings live in `deploy/cloudflare.json`. Secrets are set with `wrangler 
 
 ## More documentation
 
-- `VERIFICATION_NOTES.md` — verification and dependency review from 12 October 2026
+- `VERIFICATION_NOTES.md` — verification and dependency review from 4 November 2026
 - `design-handoff/handoff.md` — the original design handoff

@@ -1,4 +1,7 @@
-import type { Lesson } from './lessons';
+import { db } from './db';
+import { lessonProgress, records } from '../db/schema';
+import { eq, and, isNull, sql } from 'drizzle-orm';
+import type { Lesson, LessonInput } from './lessons';
 
 // Lesson progress: where each student stopped in each lesson, and which lessons they have finished.
 // Videos count as finished once 90% has been watched; other lessons when the student marks them done.
@@ -6,40 +9,83 @@ import type { Lesson } from './lessons';
 export const DONE_SHARE=0.9;
 export type Progress={positionS:number;durationS:number;completed:boolean;updatedAt:string};
 export type CourseProgress={done:number;total:number;lastAt:string|null};
+type ProgressRow={lessonId:string;positionS:number;durationS:number;completedAt:string|null;updatedAt:string};
+type CourseProgressRow={courseSlug:string;lessonId:string;completedAt:string|null;updatedAt:string;data:string|null};
 
 const whole=(value:unknown,max:number)=>{const n=Math.floor(Number(value));return Number.isFinite(n)&&n>0?Math.min(n,max):0;};
 
-export async function recordProgress(db:D1Database,studentId:string,courseSlug:string,lessonId:string,input:{position?:unknown;duration?:unknown;done?:unknown},now=Date.now()){
+export async function recordProgress(studentId:string,courseSlug:string,lessonId:string,input:{position?:unknown;duration?:unknown;done?:unknown},now=Date.now()){
   const durationS=whole(input.duration,24*60*60),positionS=Math.min(whole(input.position,24*60*60),durationS||24*60*60);
   const done=input.done===true||(durationS>0&&positionS>=durationS*DONE_SHARE);
-  const at=new Date(now).toISOString();
-  // A finished lesson stays finished, even if the student rewatches the start of it.
-  await db.prepare(`INSERT INTO lesson_progress(student_id,course_slug,lesson_id,position_s,duration_s,completed_at,updated_at) VALUES(?,?,?,?,?,?,?)
-    ON CONFLICT(student_id,course_slug,lesson_id) DO UPDATE SET position_s=excluded.position_s,duration_s=max(lesson_progress.duration_s,excluded.duration_s),completed_at=coalesce(lesson_progress.completed_at,excluded.completed_at),updated_at=excluded.updated_at`)
-    .bind(studentId,courseSlug,lessonId,positionS,durationS,done?at:null,at).run();
+  const nowDate = new Date(now);
+
+  await db.insert(lessonProgress).values({
+    studentId,
+    courseSlug,
+    lessonId,
+    positionS,
+    durationS,
+    completedAt: done ? nowDate : null,
+    updatedAt: nowDate,
+  }).onConflictDoUpdate({
+    target: [lessonProgress.studentId, lessonProgress.courseSlug, lessonProgress.lessonId],
+    set: {
+      positionS: sql`excluded.position_s`,
+      durationS: sql`greatest(${lessonProgress.durationS}, excluded.duration_s)`,
+      completedAt: sql`coalesce(${lessonProgress.completedAt}, excluded.completed_at)`,
+      updatedAt: nowDate,
+    },
+  });
 }
 
-export async function progressFor(db:D1Database,studentId:string,courseSlug:string){
-  const rows=(await db.prepare('SELECT lesson_id,position_s,duration_s,completed_at,updated_at FROM lesson_progress WHERE student_id=? AND course_slug=?').bind(studentId,courseSlug).all<any>()).results;
-  return new Map<string,Progress>(rows.map(r=>[r.lesson_id,{positionS:r.position_s,durationS:r.duration_s,completed:!!r.completed_at,updatedAt:r.updated_at}]));
+export async function progressFor(studentId:string,courseSlug:string){
+  const rows = await db.select({
+    lessonId: lessonProgress.lessonId,
+    positionS: lessonProgress.positionS,
+    durationS: lessonProgress.durationS,
+    completedAt: lessonProgress.completedAt,
+    updatedAt: lessonProgress.updatedAt,
+  }).from(lessonProgress)
+  .where(and(eq(lessonProgress.studentId, studentId), eq(lessonProgress.courseSlug, courseSlug)));
+
+  return new Map<string,Progress>(rows.map(r=>[r.lessonId,{
+    positionS: r.positionS,
+    durationS: r.durationS,
+    completed: !!r.completedAt,
+    updatedAt: r.updatedAt.toISOString(),
+  }]));
 }
 
 // Finished lessons out of the course's current lessons, for every course the student has started.
-export async function courseProgressFor(db:D1Database,studentId:string){
-  const rows=(await db.prepare(`SELECT p.course_slug,p.lesson_id,p.completed_at,p.updated_at,r.data FROM lesson_progress p
-    LEFT JOIN records r ON r.kind='course' AND r.unique_key=p.course_slug AND r.archived_at IS NULL WHERE p.student_id=?`).bind(studentId).all<any>()).results;
-  const out=new Map<string,CourseProgress>();
-  const lessonIds=new Map<string,Set<string>>();
+export async function courseProgressFor(studentId:string){
+  const rows = await db.select({
+    courseSlug: lessonProgress.courseSlug,
+    lessonId: lessonProgress.lessonId,
+    completedAt: lessonProgress.completedAt,
+    updatedAt: lessonProgress.updatedAt,
+    data: records.data,
+  }).from(lessonProgress)
+  .leftJoin(records, and(
+    eq(records.kind, 'course'),
+    eq(records.uniqueKey, lessonProgress.courseSlug),
+    isNull(records.archivedAt)
+  ))
+  .where(eq(lessonProgress.studentId, studentId));
+
+  const out = new Map<string,CourseProgress>();
+  const lessonIds = new Map<string,Set<string>>();
+
   for(const r of rows){
-    if(!lessonIds.has(r.course_slug)){
-      let lessons:any[]=[];try{lessons=JSON.parse(r.data||'{}').lessons||[];}catch{}
-      lessonIds.set(r.course_slug,new Set(lessons.map((l:any,i:number)=>String(l.id||'i'+i).slice(0,60))));
+    if(!lessonIds.has(r.courseSlug)){
+      let lessons:LessonInput[]=[];
+      try{lessons=(JSON.parse(r.data||'{}') as {lessons?:LessonInput[]}).lessons||[];}catch{}
+      lessonIds.set(r.courseSlug,new Set(lessons.map((l,i)=>String(l.id||'i'+i).slice(0,60))));
     }
-    const ids=lessonIds.get(r.course_slug)!;
-    const entry=out.get(r.course_slug)||{done:0,total:ids.size,lastAt:null};
-    if(r.completed_at&&ids.has(r.lesson_id))entry.done++;
-    if(!entry.lastAt||r.updated_at>entry.lastAt)entry.lastAt=r.updated_at;
-    out.set(r.course_slug,entry);
+    const ids = lessonIds.get(r.courseSlug)!;
+    const entry = out.get(r.courseSlug)||{done:0,total:ids.size,lastAt:null};
+    if(r.completedAt && ids.has(r.lessonId)) entry.done++;
+    if(!entry.lastAt || r.updatedAt.getTime() > new Date(entry.lastAt).getTime()) entry.lastAt = r.updatedAt.toISOString();
+    out.set(r.courseSlug, entry);
   }
   return out;
 }

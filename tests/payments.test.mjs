@@ -21,7 +21,11 @@ CREATE UNIQUE INDEX record_unique_key ON records(kind,unique_key);
 CREATE TABLE audit_events(id text PRIMARY KEY,entity_id text NOT NULL,action text NOT NULL,summary text NOT NULL,actor text NOT NULL,created_at text NOT NULL);`;
 function database(){
   const sqlite=new DatabaseSync(':memory:');sqlite.exec(sql);sqlite.exec(adminTables);
-  const db={prepare(query){let args=[];const statement={bind(...values){args=values;return statement;},async first(){return sqlite.prepare(query).get(...args)||null;},async all(){return {results:sqlite.prepare(query).all(...args)};},async run(){return sqlite.prepare(query).run(...args);}};return statement;}};
+  const db={prepare(query){let args=[];const statement={bind(...values){args=values;return statement;},async first(){return sqlite.prepare(query).get(...args)||null;},async all(){return {results:sqlite.prepare(query).all(...args)};},execute(){return sqlite.prepare(query).run(...args);},async run(){return statement.execute();}};return statement;},async batch(statements){
+    sqlite.exec('BEGIN');
+    try{const results=statements.map(statement=>statement.execute());sqlite.exec('COMMIT');return results;}
+    catch(error){sqlite.exec('ROLLBACK');throw error;}
+  }};
   return {db,sqlite};
 }
 const config={storeId:'testbox',storePassword:'qwerty',live:false};
@@ -96,6 +100,43 @@ test('A confirmed payment enrols the student once and is recorded in the admin l
   await failsWith(pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'}),409);
 });
 
+test('A failed settlement rolls back every write and a retry grants access exactly once',async()=>{
+  for(const table of ['enrolments','discount_codes','records','audit_events','orders']){
+    const {db,sqlite,student}=setup();
+    sqlite.exec("INSERT INTO discount_codes(code,percent,uses,active,created_at,updated_at) VALUES('SAVE10',10,0,1,'x','x')");
+    const order=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0,{code:'SAVE10',percent:10});
+    const g=gateway({amount:(order.amountMinor/100).toFixed(2)});g.calls.tran=order.tranId;
+    sqlite.exec(`CREATE TRIGGER fail_settlement BEFORE ${['discount_codes','orders'].includes(table)?'UPDATE':'INSERT'} ON ${table} BEGIN SELECT RAISE(ABORT,'temporary database failure'); END`);
+    await assert.rejects(pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0),/temporary database failure/);
+    assert.equal((await pay.orderById(db,order.id)).status,'pending',table);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM enrolments').get().n,0,table);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM records').get().n,0,table);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM audit_events').get().n,0,table);
+    assert.equal(sqlite.prepare("SELECT uses FROM discount_codes WHERE code='SAVE10'").get().uses,0,table);
+    sqlite.exec('DROP TRIGGER fail_settlement');
+    assert.equal((await pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0)).status,'paid');
+    assert.equal(await pay.isEnrolled(db,student.id,course.id,t0),true);
+    await pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM enrolments').get().n,1);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM records').get().n,1);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM audit_events').get().n,1);
+    assert.equal(sqlite.prepare("SELECT uses FROM discount_codes WHERE code='SAVE10'").get().uses,1);
+  }
+});
+
+test('Concurrent confirmations do not double-count a discount or duplicate the audit ledger',async()=>{
+  const {db,sqlite,student}=setup();
+  sqlite.exec("INSERT INTO discount_codes(code,percent,uses,active,created_at,updated_at) VALUES('SAVE10',10,0,1,'x','x')");
+  const order=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0,{code:'SAVE10',percent:10});
+  const g=gateway({amount:(order.amountMinor/100).toFixed(2)});g.calls.tran=order.tranId;
+  const results=await Promise.all([pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0),pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,t0)]);
+  assert.ok(results.every(result=>result.status==='paid'));
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM enrolments').get().n,1);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM records').get().n,1);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM audit_events').get().n,1);
+  assert.equal(sqlite.prepare("SELECT uses FROM discount_codes WHERE code='SAVE10'").get().uses,1);
+});
+
 test('Payments that SSLCommerz does not confirm in full never grant access',async()=>{
   for(const validation of [{status:'INVALID_TRANSACTION'},{amount:'10.00'},{currency:'USD'},{tran_id:'SOMEONE-ELSE'}]){
     const {db,student}=setup();
@@ -107,6 +148,26 @@ test('Payments that SSLCommerz does not confirm in full never grant access',asyn
   }
   const {db}=setup();
   await failsWith(pay.settleOrder(db,config,'UNKNOWN','VAL1',gateway().fetcher),404);
+});
+
+test('Gateway errors leave a payment pending and let a later confirmation succeed',async()=>{
+  const {db,student}=setup();
+  const order=await pay.createOrder(db,student,course,{email:'a@b.co',phone:'+8801712345678'},t0);
+  const valid={status:'VALID',tran_id:order.tranId,currency:'BDT',amount:'4499.00'};
+  const errors=[
+    ()=>Response.json({status:'SERVICE_UNAVAILABLE'},{status:503}),
+    ()=>Response.json(valid,{status:503}),
+    ()=>Response.json(null),
+    ()=>Response.json({message:'No validation result'}),
+  ];
+  for(const response of errors){
+    await failsWith(pay.settleOrder(db,config,order.tranId,'VAL1',async()=>response(),t0),502);
+    assert.equal((await pay.orderById(db,order.id)).status,'pending');
+    assert.equal(await pay.isEnrolled(db,student.id,course.id,t0),false);
+  }
+  const paid=await pay.settleOrder(db,config,order.tranId,'VAL1',async()=>Response.json(valid),t0);
+  assert.equal(paid.status,'paid');
+  assert.equal(await pay.isEnrolled(db,student.id,course.id,t0),true);
 });
 
 test('Risky payments are held for review; forged cancels cannot block or undo a real payment',async()=>{
@@ -198,6 +259,30 @@ test('In the last week, renewing adds a month from the current end date',async()
   const g2=gateway();g2.calls.tran=second.tranId;
   await pay.settleOrder(db,config,second.tranId,'VAL1',g2.fetcher,early);
   assert.equal((await pay.enrolmentFor(db,student.id,'physics-as',early)).expires_at,new Date(access.addOneMonth(Date.parse(ends))).toISOString(),'no days are lost');
+});
+
+test('Distinct concurrent renewal payments each add a calendar month without losing time',async()=>{
+  const {db,sqlite,student}=setup();
+  addCourseRecord(sqlite,'physics-as','full');
+  const now=Date.parse('2027-01-28T10:12:13.456Z'),ends='2027-01-31T10:12:13.456Z';
+  sqlite.prepare("INSERT INTO enrolments(id,student_id,course_slug,course_title,source,created_at,expires_at) VALUES('existing',?,?,?,'payment','x',?)").run(student.id,course.id,course.title,ends);
+  // Both checkout tabs opened while renewal was allowed, before either payment was confirmed.
+  const orders=await Promise.all([0,1].map(()=>pay.createOrder(db,student,course,{email:'a@b.co',phone:student.phone},now)));
+  // Let both requests finish their reads before running the transactions one at a time, as D1 does.
+  const executeBatch=db.batch.bind(db);
+  let arrivals=0,release;
+  const ready=new Promise(resolve=>{release=resolve;});
+  db.batch=async statements=>{if(++arrivals===2)release();await ready;return executeBatch(statements);};
+  const results=await Promise.all(orders.map(order=>{
+    const g=gateway();g.calls.tran=order.tranId;
+    return pay.settleOrder(db,config,order.tranId,'VAL1',g.fetcher,now);
+  }));
+  assert.ok(results.every(order=>order.status==='paid'));
+  assert.equal((await pay.enrolmentFor(db,student.id,course.id,now)).expires_at,'2027-03-28T10:12:13.456Z','January 31 renews to February 28, then March 28, preserving the time');
+  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM records WHERE kind='payment'").get().n,2);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM audit_events').get().n,2);
+  for(const order of orders)await pay.settleOrder(db,config,order.tranId,'VAL1',gateway().fetcher,now);
+  assert.equal((await pay.enrolmentFor(db,student.id,course.id,now)).expires_at,'2027-03-28T10:12:13.456Z','repeated callbacks do not add more time');
 });
 
 test('Reminders start a week before monthly access ends',()=>{

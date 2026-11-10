@@ -1,3 +1,6 @@
+import { db } from './db';
+import { accountActivity } from '../db/schema';
+import { eq, lt, and, count } from 'drizzle-orm';
 import { sha256 } from './student-auth';
 
 // Account activity, for the admin's "possible account sharing" alerts: each sign-in and each lesson video
@@ -13,10 +16,22 @@ export function deviceLabel(userAgent:string){
   return ua.includes('iphone')?'iPhone':ua.includes('ipad')?'iPad':ua.includes('android')?'Android':ua.includes('windows')?'Windows':ua.includes('mac os')||ua.includes('macintosh')?'Mac':ua.includes('cros')?'Chromebook':ua.includes('linux')?'Linux':ua?'Other':'';
 }
 
-export async function recordActivity(db:D1Database,studentId:string,kind:'sign-in'|'watch',place:Place,pepper:string,now=Date.now()){
-  const network=(await sha256(pepper+':network:'+place.ip)).slice(0,16);
-  const at=new Date(now).toISOString();
-  await db.prepare('INSERT INTO account_activity(id,student_id,kind,network,city,country,device,created_at) VALUES(?,?,?,?,?,?,?,?)')
-    .bind(crypto.randomUUID(),studentId,kind,network,place.city.slice(0,80),place.country.slice(0,2).toUpperCase(),deviceLabel(place.userAgent),at).run();
-  await db.prepare('DELETE FROM account_activity WHERE student_id=? AND created_at<?').bind(studentId,new Date(now-ACTIVITY_DAYS*24*60*60*1000).toISOString()).run();
+export async function recordActivity(studentId:string,kind:'sign-in'|'watch',place:Place,pepper:string,now=Date.now()){
+  const network = (await sha256(pepper+':network:'+place.ip)).slice(0,16);
+  const nowDate = new Date(now);
+
+  await db.insert(accountActivity).values({
+    id: crypto.randomUUID(),
+    studentId,
+    kind,
+    network,
+    city: place.city.slice(0,80),
+    country: place.country.slice(0,2).toUpperCase(),
+    device: deviceLabel(place.userAgent),
+    createdAt: nowDate,
+  });
+
+  // Delete old activity records
+  const cutoffDate = new Date(now - ACTIVITY_DAYS*24*60*60*1000);
+  await db.delete(accountActivity).where(and(eq(accountActivity.studentId, studentId), lt(accountActivity.createdAt, cutoffDate)));
 }

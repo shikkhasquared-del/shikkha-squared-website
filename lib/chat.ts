@@ -1,7 +1,11 @@
 import type { Catalogue } from './catalog-pages';
+import type { SiteSettings } from './catalogue-types';
 import { accessLabel } from './access';
 import { sha256 } from './student-auth';
 import { taka } from './payments';
+import { db } from './db';
+import { chatUsage } from '../db/schema';
+import { eq, and, lt, sql } from 'drizzle-orm';
 
 // The website's AI assistant. It answers from public information only: the published catalogue, FAQs and
 // site policies. It has no tools and sees no student data, so it can't enrol anyone or change anything.
@@ -31,7 +35,7 @@ export class ChatRefusal extends Error {}
 // Only recent plain text from the browser is used, and the conversation must end with the visitor's question.
 export function cleanMessages(input:unknown):ChatMessage[]{
   if(!Array.isArray(input))throw new ChatRefusal('No message was sent.');
-  const messages=input.slice(-MAX_HISTORY).filter((m:any)=>(m?.role==='user'||m?.role==='assistant')&&typeof m?.content==='string').map((m:any)=>({role:m.role as ChatMessage['role'],content:m.content.trim()})).filter(m=>m.content);
+  const messages=input.slice(-MAX_HISTORY).filter((m:unknown):m is ChatMessage=>typeof m==='object'&&m!==null&&'role' in m&&(m.role==='user'||m.role==='assistant')&&'content' in m&&typeof m.content==='string').map(m=>({role:m.role,content:m.content.trim()})).filter(m=>m.content);
   const last=messages.at(-1);
   if(!last||last.role!=='user')throw new ChatRefusal('No message was sent.');
   if(last.content.length>MAX_MESSAGE_CHARS)throw new ChatRefusal(`Please keep your message under ${MAX_MESSAGE_CHARS} characters.`);
@@ -42,10 +46,10 @@ export function cleanMessages(input:unknown):ChatMessage[]{
 const formats:Record<string,string>={full:'Full course',crash:'Crash course',papers:'Past paper solving',live:'Live classes',recorded:'Recorded classes',modular:'Modular',mock:'Mock exam',demo:'Demo',extra:'Extra curricular'};
 const oneLine=(value:unknown,max:number)=>String(value??'').replace(/\s+/g,' ').trim().slice(0,max);
 
-export const whatsappLink=(settings:any)=>`https://wa.me/${String(settings?.supportPhone||'8801787668201').replace(/[^0-9]/g,'')}`;
+export const whatsappLink=(settings:SiteSettings|null|undefined)=>`https://wa.me/${String(settings?.supportPhone||'8801787668201').replace(/[^0-9]/g,'')}`;
 
 // Public facts only. Lesson links are deliberately left out.
-export function knowledge(data:Catalogue&{content?:any[]}){
+export function knowledge(data:Catalogue){
   const s=data.settings||{};
   const email=oneLine(s.supportEmail,100)||'shikkhasquared@gmail.com';
   const facts=[
@@ -59,7 +63,7 @@ export function knowledge(data:Catalogue&{content?:any[]}){
   ];
   const courses=(withAbout:boolean)=>(data.courses||[]).map(c=>{
     const about=withAbout&&c.description&&!/^Explore /.test(c.description)?` | ${oneLine(c.description,120)}`:'';
-    const price=Number.isInteger(c.priceMinor)&&c.priceMinor>0?`from ${taka(c.priceMinor)}${c.checkout?' (buy online)':' (ask admissions to enrol)'}`:'fee: ask admissions';
+    const price=typeof c.priceMinor==='number'&&Number.isInteger(c.priceMinor)&&c.priceMinor>0?`from ${taka(c.priceMinor)}${c.checkout?' (buy online)':' (ask admissions to enrol)'}`:'fee: ask admissions';
     return `- ${oneLine(c.title,160)} | ${oneLine(c.board,80)} | ${formats[c.format]||oneLine(c.format,30)} | teacher: ${oneLine(c.teacher,80)} | ${price} | ${accessLabel(c.format)} | /courses/${c.id}${about}`;
   });
   const teachers=(data.instructors||[]).map(p=>`- ${oneLine(p.title,100)}: ${oneLine(p.subjects,120)} | /instructors/${p.id}`);
@@ -73,7 +77,7 @@ export function knowledge(data:Catalogue&{content?:any[]}){
   return cut.slice(0,cut.lastIndexOf('\n'))+note;
 }
 
-export function systemPrompt(data:Catalogue&{content?:any[]}){
+export function systemPrompt(data:Catalogue){
   return `You are the Shikkha Squared website assistant. You help visitors and students with courses, fees, teachers, access and how the website works.
 
 Rules:
@@ -93,20 +97,54 @@ ${knowledge(data)}`;
 
 // Counts a message against the visitor's and the whole site's daily limits. Bangladeshi networks often share an
 // address, so the visitor limit is generous; the network is stored only as a scrambled code and removed next day.
-export async function takeChatTurn(db:D1Database,ip:string,pepper:string,now=Date.now()):Promise<'ok'|'visitor'|'site'>{
-  const day=new Date(now).toISOString().slice(0,10);
-  const count=(key:string,limit:number)=>db.prepare('INSERT INTO chat_usage(key,day,count) VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET count=count+1 WHERE count<? RETURNING count').bind(key,day,limit).first<{count:number}>();
-  const visitor=await count(`${day}:${(await sha256(pepper+':chat:'+ip)).slice(0,16)}`,VISITOR_MESSAGES_PER_DAY);
-  if(!visitor)return 'visitor';
-  const site=await count(`${day}:site`,SITE_MESSAGES_PER_DAY);
-  if(!site)return 'site';
-  if(site.count===1)await db.prepare('DELETE FROM chat_usage WHERE day<?').bind(day).run();
+export async function takeChatTurn(ip:string,pepper:string,now=Date.now()):Promise<'ok'|'visitor'|'site'>{
+  const day = new Date(now).toISOString().slice(0,10);
+  const networkHash = (await sha256(pepper+':chat:'+ip)).slice(0,16);
+  const visitorKey = `${day}:${networkHash}`;
+  const siteKey = `${day}:site`;
+
+  // Use upsert with count limit
+  const visitorResult = await db.insert(chatUsage).values({
+    key: visitorKey,
+    day,
+    count: 1,
+  }).onConflictDoUpdate({
+    target: chatUsage.key,
+    set: { count: sql`${chatUsage.count} + 1` },
+  }).returning({ count: chatUsage.count });
+
+  if (!visitorResult[0] || visitorResult[0].count > VISITOR_MESSAGES_PER_DAY) {
+    return 'visitor';
+  }
+
+  const siteResult = await db.insert(chatUsage).values({
+    key: siteKey,
+    day,
+    count: 1,
+  }).onConflictDoUpdate({
+    target: chatUsage.key,
+    set: { count: sql`${chatUsage.count} + 1` },
+  }).returning({ count: chatUsage.count });
+
+  if (!siteResult[0] || siteResult[0].count > SITE_MESSAGES_PER_DAY) {
+    return 'site';
+  }
+
+  // Clean up old days
+  if (siteResult[0].count === 1) {
+    const cutoffDay = new Date(now);
+    cutoffDay.setDate(cutoffDay.getDate() - 1);
+    const cutoffStr = cutoffDay.toISOString().slice(0,10);
+    await db.delete(chatUsage).where(lt(chatUsage.day, cutoffStr));
+  }
+
   return 'ok';
 }
 
 // Whatever the model sends back becomes plain text for the chat bubble.
-export function cleanReply(result:any){
-  const raw=String(result?.response??result?.choices?.[0]?.message?.content??'');
+export function cleanReply(result:unknown){
+  const reply=result as {response?:unknown;choices?:{message?:{content?:unknown}}[]}|null|undefined;
+  const raw=String(reply?.response??reply?.choices?.[0]?.message?.content??'');
   if(raw.includes(CARE_SIGNAL))return CARE_REPLY;
   return raw.replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/\*\*|__|`/g,'').replace(/^#+\s*/gm,'').trim().slice(0,1500);
 }

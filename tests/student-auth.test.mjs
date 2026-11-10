@@ -43,7 +43,7 @@ test('A code works once, only before it expires, and wrong guesses are limited',
   await auth.consumeLoginCode(db,phone,code,pepper,t0+2000);
   await rejects(auth.consumeLoginCode(db,phone,code,pepper,t0+3000),410);
   const late=await auth.issueLoginCode(db,phone,'1.1.1.1',pepper,t0+120000);
-  await rejects(auth.consumeLoginCode(db,phone,late,pepper,t0+120000+auth.CODE_TTL_MS+1),410);
+  await rejects(auth.consumeLoginCode(db,phone,late,pepper,t0+120000+auth.CODE_TTL_MS),410);
   const guessed=await auth.issueLoginCode(db,phone,'1.1.1.1',pepper,t0+240000);
   const other=guessed==='000000'?'111111':'000000';
   for(let i=0;i<auth.CODE_MAX_ATTEMPTS;i++)await rejects(auth.consumeLoginCode(db,phone,other,pepper,t0+241000),400);
@@ -61,6 +61,51 @@ test('Code requests are rate limited per number and per network',async()=>{
   for(let i=0;i<auth.CODES_PER_IP-3;i++)await auth.issueLoginCode(db,'+88019'+String(10000000+i),'2.2.2.2',pepper,t0+184000);
   await rejects(auth.issueLoginCode(db,'+8801999999999','2.2.2.2',pepper,t0+185000),429);
   await rejects(auth.issueLoginCode(db,phone,'3.3.3.3','',t0),503);
+});
+
+test('Concurrent code requests share the same cooldown for a phone',async()=>{
+  const db=database(),phone='+8801712345678',ip='2.2.2.2';
+  await auth.issueLoginCode(db,phone,ip,pepper,t0);
+  const requests=Array.from({length:8},()=>auth.issueLoginCode(db,phone,ip,pepper,t0+auth.CODE_COOLDOWN_MS));
+  const results=await Promise.allSettled(requests);
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  for(const result of results){
+    if(result.status==='rejected')assert.ok(result.reason instanceof auth.AuthFailure&&result.reason.status===429);
+  }
+});
+
+test('Concurrent code requests for different phones share the network quota',async()=>{
+  const db=database(),ip='2.2.2.2';
+  const requests=Array.from({length:auth.CODES_PER_IP+6},(_,i)=>
+    auth.issueLoginCode(db,'+88019'+String(10000000+i),ip,pepper,t0)
+  );
+  const results=await Promise.allSettled(requests);
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,auth.CODES_PER_IP);
+  for(const result of results){
+    if(result.status==='rejected')assert.ok(result.reason instanceof auth.AuthFailure&&result.reason.status===429);
+  }
+});
+
+test('Consuming the newest code never makes an older code usable again',async()=>{
+  const db=database(),phone='+8801712345678',ip='2.2.2.2';
+  const oldCode=await auth.issueLoginCode(db,phone,ip,pepper,t0);
+  const newerTime=t0+auth.CODE_COOLDOWN_MS;
+  const newCode=await auth.issueLoginCode(db,phone,ip,pepper,newerTime);
+  await auth.consumeLoginCode(db,phone,newCode,pepper,newerTime+1);
+  await rejects(auth.consumeLoginCode(db,phone,oldCode,pepper,newerTime+2),410);
+});
+
+test('Concurrent submissions can consume a code and count that successful attempt only once',async()=>{
+  const db=database(),phone='+8801712345678',ip='2.2.2.2';
+  const code=await auth.issueLoginCode(db,phone,ip,pepper,t0);
+  const results=await Promise.allSettled(Array.from({length:8},()=>
+    auth.consumeLoginCode(db,phone,code,pepper,t0+1)
+  ));
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  for(const result of results){
+    if(result.status==='rejected')assert.ok(result.reason instanceof auth.AuthFailure&&result.reason.status===410);
+  }
+  assert.equal((await db.prepare('SELECT attempts FROM login_codes WHERE phone=?').bind(phone).first()).attempts,1);
 });
 
 test('Sessions identify the student until they expire or sign out',async()=>{

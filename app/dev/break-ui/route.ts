@@ -21,7 +21,7 @@ function toggle(page:Page,data:DataSet){
 }
 
 export async function GET(request:Request){
-  if(!(import.meta as any).env?.DEV)return new Response('Not found.',{status:404});
+  if(!(import.meta as ImportMeta&{env?:{DEV?:boolean}}).env?.DEV)return new Response('Not found.',{status:404});
   const params=new URL(request.url).searchParams;
   const page=(PAGES as readonly string[]).includes(params.get('page')||'')?params.get('page') as Page:'classroom';
   const data=(DATA_SETS as string[]).includes(params.get('data')||'')?params.get('data') as DataSet:'demo';

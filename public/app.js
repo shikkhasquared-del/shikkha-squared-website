@@ -49,7 +49,7 @@
   function resetFilters() {activeFilter='all';$('#course-search').value='';$('#course-format').value='all';renderCourses();}
   function showToast(message) {const toast=$('#toast');toast.textContent=message;toast.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('visible'),2700);}
   function toggleSave(id) {
-    saved.has(id)?saved.delete(id):saved.add(id);
+    if(saved.has(id))saved.delete(id);else saved.add(id);
     try {localStorage.setItem('shikkha-shortlist',JSON.stringify([...saved]));} catch {}
     const keepFocus=document.activeElement?.dataset.save===id;
     renderCourses();

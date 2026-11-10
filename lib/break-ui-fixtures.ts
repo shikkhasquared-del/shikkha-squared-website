@@ -82,12 +82,12 @@ export function classroomFor(set:DataSet):Classroom{
   if(set==='worst'){mark(1,true);mark(2,false,6299);mark(0,false,3725);}
   if(set==='one')mark(0,true);
   if(set==='many')for(let i=0;i<99;i++)mark(i,true);
-  const c:any=course(set);
+  const c=course(set);
   return {slug:c.slug,course:c,published:true,lessons,student:students[set],enrolled:set!=='empty',access:courseAccessFor(set)??(set==='empty'?null:{active:true,expiresAt:at(20)}),progress};
 }
 
 // ---------- Account ----------
-const enrolment=(title:string,slug:string,expiresDays:number|null):Enrolment=>({course_slug:slug,course_title:title,created_at:at(-40),expires_at:expiresDays===null?null:at(expiresDays),active:expiresDays===null||expiresDays>0});
+const enrolment=(title:string,slug:string,expiresDays:number|null):Enrolment=>({courseSlug:slug,courseTitle:title,createdAt:new Date(at(-40)),expiresAt:expiresDays===null?null:new Date(at(expiresDays)),active:expiresDays===null||expiresDays>0});
 export function accountFor(set:DataSet){
   const student=students[set];
   const courses:Enrolment[]=set==='demo'?[enrolment('Physics A2 Levels (Cambridge) with Bappi Sir','physics-a2',28)]
@@ -98,6 +98,6 @@ export function accountFor(set:DataSet){
   if(set==='demo')progress.set('physics-a2',{done:1,total:3,lastAt:at(-1)});
   if(set==='worst'){progress.set('long-physics',{done:99,total:100,lastAt:at(-1)});progress.set('bangla-physics',{done:0,total:100,lastAt:at(-2)});progress.set('q',{done:1,total:1,lastAt:at(-3)});}
   if(set==='one')progress.set('jo',{done:1,total:1,lastAt:at(-1)});
-  if(set==='many')courses.forEach((c,i)=>progress.set(c.course_slug,{done:i%11,total:10+(i%3),lastAt:at(-i)}));
+  if(set==='many')courses.forEach((c,i)=>progress.set(c.courseSlug,{done:i%11,total:10+(i%3),lastAt:at(-i)}));
   return {student,courses,progress};
 }

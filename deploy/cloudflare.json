@@ -1,7 +1,7 @@
 {
   "name": "shikkha-website",
   "d1_databases": [
-    { "binding": "DB", "database_name": "shikkha-squared", "database_id": "050c5f0f-36d4-4a28-9fa8-1746984e7149" }
+    { "binding": "DB", "database_name": "shikkha-squared", "database_id": "35353faf-a87d-47be-9fb4-ee22233d29ab" }
   ],
   "r2_buckets": [
     { "binding": "BUCKET", "bucket_name": "shikkha-media" }

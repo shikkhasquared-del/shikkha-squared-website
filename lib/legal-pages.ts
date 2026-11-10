@@ -1,4 +1,5 @@
 import { esc, shell, type Catalogue } from './catalog-pages';
+import type { SiteSettings } from './catalogue-types';
 
 // Privacy Policy and Terms of Use. The text describes what this site actually collects and which
 // services it uses; keep it in step with the code when that changes.
@@ -7,7 +8,7 @@ export const LEGAL_DRAFT=true;
 export const LEGAL_UPDATED='28 October 2026';
 
 type Contact={email:string;phone:string;address:string};
-export function legalContact(settings:any):Contact{
+export function legalContact(settings:SiteSettings|null|undefined):Contact{
   return {email:settings?.supportEmail||'shikkhasquared@gmail.com',phone:settings?.supportPhone||'',address:settings?.address||''};
 }
 const contactBlock=(c:Contact)=>`<ul class="legal-contact"><li>Email: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></li>${c.phone?`<li>Phone: ${esc(c.phone)}</li>`:''}${c.address?`<li>Address: ${esc(c.address)}</li>`:''}</ul>`;

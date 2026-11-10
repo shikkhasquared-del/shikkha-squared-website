@@ -6,7 +6,13 @@ import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
 const output=path.resolve('.test-output/pages'),outputUrl=pathToFileURL(output).href;await fs.mkdir(output,{recursive:true});
 await fs.writeFile(output+'/student-server.mjs','export async function viewerAccess(){return null;}');
-await fs.writeFile(output+'/site.mjs',"export const siteOrigin=()=>'https://site.test';export const indexingAllowed=()=>globalThis.__indexing===true;export const analyticsTag=()=>'';");
+const siteSource=(await fs.readFile('lib/site.ts','utf8')).replace(
+  "import { env } from 'cloudflare:workers';",
+  "const env={PUBLIC_ORIGIN:'https://site.test',get SEARCH_INDEXING(){return globalThis.__indexing===true?'on':'';}};",
+);
+await fs.writeFile(output+'/site.mjs',ts.transpileModule(siteSource,{
+  compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022},
+}).outputText);
 for(const name of ['catalog-pages','course-taxonomy','route-slug','access']){let source=await fs.readFile('lib/'+name+'.ts','utf8');if(name==='catalog-pages')source=source.replace("import { readCMS } from './cms-read';",'const readCMS=async()=>{throw new Error("Not used by rendering tests");};');await fs.writeFile(output+'/'+name+'.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from './course-taxonomy'","from './course-taxonomy.mjs'").replace("from './access'","from './access.mjs'").replace("from './site'","from './site.mjs'"));}
 const {coursesPage,instructorsPage,coursePage,instructorPage,sectionPage}=await import(outputUrl+'/catalog-pages.mjs');
 const section={id:'cambridge-as',title:'Cambridge AS',description:'AS courses',mode:'rules',board:'cambridge',level:'as',format:'all'};

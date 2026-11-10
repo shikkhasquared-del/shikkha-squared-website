@@ -1,7 +1,8 @@
 import { AuthFailure, isSameOrigin, issueLoginCode, normalizePhone, safeNext } from '../../../../lib/student-auth';
-import { sendLoginCode } from '../../../../lib/sms';
+import { requireSmsProvider, sendLoginCode } from '../../../../lib/sms';
 import { accountPage, codePage, loginPage } from '../../../../lib/student-pages';
-import { clientIp, currentStudent, failureMessage, formInput, googleConfig, otpPepper, studentDb } from '../../../../lib/student-server';
+import { clientIp, currentStudent, failureMessage, formInput, googleConfig, otpPepper } from '../../../../lib/student-server';
+import { db } from '../../../../lib/db';
 export const dynamic='force-dynamic';
 // Sends a sign-in code, or (when signed in) a code to confirm a number being added to the account.
 export async function POST(request:Request){
@@ -12,7 +13,8 @@ export async function POST(request:Request){
     const field=await formInput(request);next=safeNext(field('next'));
     const phone=normalizePhone(field('phone'));
     if(!phone)throw new AuthFailure('Enter a Bangladeshi mobile number, like 01712345678.');
-    const code=await issueLoginCode(studentDb(),phone,clientIp(request),otpPepper());
+    requireSmsProvider();
+    const code=await issueLoginCode(db, phone, clientIp(request), otpPepper());
     await sendLoginCode(phone,code);
     return codePage({phone,next});
   }catch(e){

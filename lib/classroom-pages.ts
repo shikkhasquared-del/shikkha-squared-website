@@ -6,10 +6,10 @@ import { accessDate, accessSummary, endingNotice, endingSoon } from './access';
 import { displayPhone, firstName, type Student } from './student-auth';
 import { clock, resumeAt, resumeIndex } from './progress';
 import type { Classroom } from './classroom';
+import { HLS } from './site';
 
 // The classroom: one lesson at a time with the course's lesson list beside it.
 const blank:Catalogue={courses:[],sections:[],instructors:[],settings:{},campaigns:[]};
-const HLS={src:'https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js',integrity:'sha384-V5ruNBgmYcC3SJRUQeNykAAAgde5gOFq/Hu0CZj7bygDP0yRIhkvX8+w0u/7mRvr'};
 const kinds:Record<string,string>={video:'Video',reading:'Reading',quiz:'Quiz','3d':'3D resource'};
 
 // Shown over the video so a recording or screenshot identifies the account it came from. The phone number or
